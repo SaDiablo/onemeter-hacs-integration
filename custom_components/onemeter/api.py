@@ -10,12 +10,26 @@ _LOGGER = logging.getLogger(__name__)
 
 API_BASE_URL = "https://cloud.onemeter.com/api"
 
-# OBIS code constants based on API documentation
-OBIS_ENERGY = "15_8_0"  # Energy A+ (total)
-OBIS_ENERGY_PHASE1 = "15_8_1"  # Energy A+ (phase 1)
-OBIS_VOLTAGE = "S_1_1_2"  # Battery voltage
-OBIS_TIMESTAMP = "S_1_1_4"  # Timestamp of last reading
-OBIS_BATTERY_LEVEL = "S_1_1_6"  # Battery level
+# OBIS code constants based on provided data
+OBIS_TARIFF = "0_2_2"           # Tariff
+OBIS_ENERGY_PLUS = "1_8_0"      # Energy A+ (total)
+OBIS_ENERGY_MINUS = "2_8_0"     # Energy A- (total)
+OBIS_ENERGY_R1 = "5_8_0"        # Energy R1 (total)
+OBIS_ENERGY_R4 = "8_8_0"        # Energy R4 (total)
+OBIS_ENERGY_ABS = "15_8_0"      # Energy |A| (total)
+OBIS_POWER = "16_7_0"           # Instantaneous power P
+
+# Diagnostic OBIS codes
+OBIS_BATTERY_VOLTAGE = "S_1_1_2"    # Battery voltage
+OBIS_METER_SERIAL = "C_1_0"         # Meter serial number
+OBIS_UART_PARAMS = "S_1_1_8"        # UART communication parameters
+
+# Hidden diagnostic OBIS codes
+OBIS_METER_ERROR = "F_F_0"          # Meter error
+OBIS_PHYSICAL_ADDRESS = "C_90_1"    # Physical address
+OBIS_SUCCESSFUL_READINGS = "S_1_1_6" # Number of successful readings
+OBIS_FAILED_READINGS_1 = "S_1_1_7"  # Number of failed readings
+OBIS_FAILED_READINGS_2 = "S_1_1_19" # Number of failed readings (alternate)
 
 
 class OneMeterApiClient:
@@ -181,7 +195,7 @@ class OneMeterApiClient:
         latest_reading = readings_data["readings"][0]
         return latest_reading.get(obis_code)
 
-    def extract_device_value(self, device_data: Dict[str, Any], obis_code: str) -> Optional[float]:
+    def extract_device_value(self, device_data: Dict[str, Any], obis_code: str) -> Optional[Any]:
         """Extract value from device response for a specific OBIS code.
         
         Args:

@@ -20,6 +20,7 @@ from homeassistant.const import (
     PERCENTAGE,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import (
@@ -30,72 +31,164 @@ from homeassistant.helpers.update_coordinator import (
 
 from .const import DOMAIN, SCAN_INTERVAL
 from .api import (
-    OneMeterApiClient, 
-    OBIS_ENERGY, 
-    OBIS_ENERGY_PHASE1,
-    OBIS_VOLTAGE, 
-    OBIS_TIMESTAMP, 
-    OBIS_BATTERY_LEVEL
+    OneMeterApiClient,
+    OBIS_TARIFF,
+    OBIS_ENERGY_PLUS,
+    OBIS_ENERGY_MINUS,
+    OBIS_ENERGY_R1,
+    OBIS_ENERGY_R4,
+    OBIS_ENERGY_ABS,
+    OBIS_POWER,
+    OBIS_BATTERY_VOLTAGE,
+    OBIS_METER_SERIAL,
+    OBIS_UART_PARAMS,
+    OBIS_METER_ERROR,
+    OBIS_PHYSICAL_ADDRESS,
+    OBIS_SUCCESSFUL_READINGS,
+    OBIS_FAILED_READINGS_1,
+    OBIS_FAILED_READINGS_2
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 # Sensor descriptions for available OBIS codes
 SENSOR_TYPES: Dict[str, SensorEntityDescription] = {
-    "energy": SensorEntityDescription(
-        key="energy",
-        name="Energy",
+    # Primary sensors
+    "tariff": SensorEntityDescription(
+        key="tariff",
+        name="Tariff",
+        icon="mdi:tag",
+    ),
+    "energy_plus": SensorEntityDescription(
+        key="energy_plus",
+        name="Energy A+ (total)",
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         icon="mdi:lightning-bolt",
     ),
-    "energy_phase1": SensorEntityDescription(
-        key="energy_phase1",
-        name="Energy Phase 1",
+    "energy_minus": SensorEntityDescription(
+        key="energy_minus",
+        name="Energy A- (total)",
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
-        icon="mdi:lightning-bolt",
+        icon="mdi:lightning-bolt-outline",
     ),
-    "voltage": SensorEntityDescription(
-        key="voltage",
+    "energy_r1": SensorEntityDescription(
+        key="energy_r1",
+        name="Energy R1 (total)",
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        icon="mdi:flash",
+    ),
+    "energy_r4": SensorEntityDescription(
+        key="energy_r4",
+        name="Energy R4 (total)",
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        icon="mdi:flash",
+    ),
+    "energy_abs": SensorEntityDescription(
+        key="energy_abs",
+        name="Energy |A| (total)",
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        icon="mdi:speedometer",
+    ),
+    "power": SensorEntityDescription(
+        key="power",
+        name="Instantaneous Power",
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:flash-outline",
+    ),
+    
+    # Diagnostic sensors - visible but in diagnostics category
+    "battery_voltage": SensorEntityDescription(
+        key="battery_voltage",
         name="Battery Voltage",
         native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:battery",
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    "battery_level": SensorEntityDescription(
-        key="battery_level",
-        name="Battery Level",
-        native_unit_of_measurement=PERCENTAGE,
-        device_class=SensorDeviceClass.BATTERY,
-        state_class=SensorStateClass.MEASUREMENT,
-        icon="mdi:battery-outline",
+    "meter_serial": SensorEntityDescription(
+        key="meter_serial",
+        name="Meter Serial Number",
+        icon="mdi:barcode",
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    "this_month": SensorEntityDescription(
-        key="this_month",
-        name="This Month Usage",
-        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL,
-        icon="mdi:calendar-month",
+    "uart_params": SensorEntityDescription(
+        key="uart_params",
+        name="UART Communication Parameters",
+        icon="mdi:router-wireless",
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
-    "previous_month": SensorEntityDescription(
-        key="previous_month",
-        name="Previous Month Usage",
-        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL,
-        icon="mdi:calendar-month-outline",
+    
+    # Hidden diagnostic sensors
+    "meter_error": SensorEntityDescription(
+        key="meter_error",
+        name="Meter Error",
+        icon="mdi:alert-circle-outline",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
     ),
-    "last_update": SensorEntityDescription(
-        key="last_update",
-        name="Last Update",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        icon="mdi:clock-outline",
+    "physical_address": SensorEntityDescription(
+        key="physical_address",
+        name="Physical Address",
+        icon="mdi:map-marker",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
     ),
+    "successful_readings": SensorEntityDescription(
+        key="successful_readings",
+        name="Successful Readings Count",
+        icon="mdi:check-circle-outline",
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+    ),
+    "failed_readings_1": SensorEntityDescription(
+        key="failed_readings_1",
+        name="Failed Readings Count (1)",
+        icon="mdi:alert",
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+    ),
+    "failed_readings_2": SensorEntityDescription(
+        key="failed_readings_2",
+        name="Failed Readings Count (2)",
+        icon="mdi:alert-circle",
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+    ),
+}
+
+# Map sensor keys to OBIS codes
+SENSOR_TO_OBIS_MAP = {
+    "tariff": OBIS_TARIFF,
+    "energy_plus": OBIS_ENERGY_PLUS,
+    "energy_minus": OBIS_ENERGY_MINUS,
+    "energy_r1": OBIS_ENERGY_R1,
+    "energy_r4": OBIS_ENERGY_R4,
+    "energy_abs": OBIS_ENERGY_ABS,
+    "power": OBIS_POWER,
+    "battery_voltage": OBIS_BATTERY_VOLTAGE,
+    "meter_serial": OBIS_METER_SERIAL,
+    "uart_params": OBIS_UART_PARAMS,
+    "meter_error": OBIS_METER_ERROR,
+    "physical_address": OBIS_PHYSICAL_ADDRESS,
+    "successful_readings": OBIS_SUCCESSFUL_READINGS,
+    "failed_readings_1": OBIS_FAILED_READINGS_1,
+    "failed_readings_2": OBIS_FAILED_READINGS_2,
 }
 
 
@@ -117,25 +210,27 @@ async def async_setup_entry(
         data: Dict[str, Any] = {}
         
         try:
-            # Get device data for basic info and monthly usage
+            # Get device data for all readings
             device_data = await client.get_device_data()
             
-            if device_data:
-                # Extract energy values
-                data["energy"] = client.extract_device_value(device_data, OBIS_ENERGY)
-                data["energy_phase1"] = client.extract_device_value(device_data, OBIS_ENERGY_PHASE1)
-                data["voltage"] = client.extract_device_value(device_data, OBIS_VOLTAGE)
-                data["battery_level"] = client.extract_device_value(device_data, OBIS_BATTERY_LEVEL)
+            # Get detailed readings with all OBIS codes
+            all_obis_codes = list(set(SENSOR_TO_OBIS_MAP.values()))
+            readings_data = await client.get_readings(1, all_obis_codes)
+            
+            if device_data or readings_data:
+                # Extract all values from device data and readings
+                for sensor_key, obis_code in SENSOR_TO_OBIS_MAP.items():
+                    # Try to get the value from device data first
+                    value = client.extract_device_value(device_data, obis_code)
+                    
+                    # If not found, try to get from readings data
+                    if value is None and readings_data:
+                        value = client.extract_reading_value(readings_data, obis_code)
+                    
+                    if value is not None:
+                        data[sensor_key] = value
                 
-                # Extract timestamp
-                timestamp_str = client.extract_device_value(device_data, OBIS_TIMESTAMP)
-                if timestamp_str:
-                    try:
-                        data["last_update"] = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
-                    except (ValueError, TypeError):
-                        _LOGGER.warning(f"Failed to parse timestamp: {timestamp_str}")
-                        
-                # Extract monthly usage
+                # Also extract monthly usage data if available
                 data["this_month"] = client.get_this_month_usage(device_data)
                 data["previous_month"] = client.get_previous_month_usage(device_data)
                 
