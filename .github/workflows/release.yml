@@ -1,0 +1,30 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  release:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Validate HACS
+        uses: hacs/action@main
+        with:
+          category: integration
+      
+      - name: Package integration
+        run: |
+          mkdir -p release/onemeter
+          cp -R custom_components/onemeter/* release/onemeter/
+          cd release
+          zip -r onemeter.zip onemeter
+      
+      - name: Upload zip to release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release/onemeter.zip

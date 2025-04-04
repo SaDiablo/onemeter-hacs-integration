@@ -2,7 +2,7 @@
     "domain": "onemeter",
     "documentation": "https://github.com/sadiablo/onemeter-hacs-integration",
     "issue_tracker": "https://github.com/sadiablo/onemeter-hacs-integration/issues",
-    "codeowners": ["@iudex", "@marcullo", "@sadiablo"],
+    "codeowners": ["@sadiablo"],
     "name": "OneMeter Cloud integration",
     "version": "0.1.0",
     "config_flow": true,
