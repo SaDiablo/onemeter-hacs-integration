@@ -4,7 +4,10 @@
     "issue_tracker": "https://github.com/OneMeterCom/hacs-integration/issues",
     "codeowners": ["@iudex", "@marcullo"],
     "name": "OneMeter Cloud integration",
-    "version": "0.0.1",
-    "type": "device",
-    "iot_class": "cloud_polling"
+    "version": "0.1.0",
+    "config_flow": true,
+    "iot_class": "cloud_polling",
+    "integration_type": "device",
+    "requirements": [],
+    "dependencies": []
 }

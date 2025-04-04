@@ -1,110 +1,70 @@
+"""Config flow for OneMeter Cloud integration."""
 import logging
+from typing import Any, Dict, Optional
 
 import voluptuous as vol
-import traceback
 
 from homeassistant import config_entries
-from homeassistant.core import callback
-from homeassistant.helpers.aiohttp_client import async_create_clientsession
+from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
+from homeassistant.core import HomeAssistant
+from homeassistant.data_entry_flow import FlowResult
+from homeassistant.exceptions import HomeAssistantError
 
-from .api import OnemeterApi
-from .const import (
-    CONF_APIKEY,
-    CONF_DEVICE,
-    CONF_SYNC_INTERVAL,
-    DEFAULT_SYNC_INTERVAL,
-    DOMAIN,
-    PLATFORMS,
-)
+from .const import DOMAIN, CONF_API_KEY
 
 _LOGGER = logging.getLogger(__name__)
 
+# This is the schema that used for the setup GUI
+STEP_USER_DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_USERNAME): str,
+        vol.Required(CONF_PASSWORD): str,
+        vol.Optional(CONF_API_KEY): str,
+    }
+)
 
-class OnemeterFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
+
+async def validate_input(hass: HomeAssistant, data: dict) -> dict:
+    """Validate the user input allows us to connect.
+
+    Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
+    """
+    # TODO: Validate the credentials by calling the API
+    # If the API call fails, raise CannotConnect or InvalidAuth exceptions
+    
+    # Return info for creating entry
+    return {"title": f"OneMeter ({data[CONF_USERNAME]})"}
+
+
+class OneMeterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Handle a config flow for OneMeter Cloud."""
 
     VERSION = 1
-    CONNECTION_CLASS = config_entries.CONN_CLASS_CLOUD_POLL
 
-    def __init__(self):
-        self._errors = {}
-
-    async def async_step_apikey(self, user_input=None):
-        self._errors = {}
-
-        if self._async_current_entries():
-            return self.async_abort(reason="single_instance_allowed")
+    async def async_step_user(self, user_input=None) -> FlowResult:
+        """Handle the initial step."""
+        errors = {}
 
         if user_input is not None:
-            valid = await self._test_input(
-                user_input[CONF_APIKEY], user_input[CONF_DEVICE]
-            )
-            if valid:
-                return self.async_create_entry(
-                    title=user_input[CONF_APIKEY], data=user_input
-                )
-            else:
-                self._errors["base"] = "auth"
-
-            return await self._show_config_form(user_input)
-
-        return await self._show_config_form(user_input)
-
-    async def _show_config_form(self, user_input):  # pylint: disable=unused-argument
-        return self.async_show_form(
-            step_id="user",
-            data_schema=vol.Schema(
-                {vol.Required(CONF_APIKEY): str, vol.Required(CONF_DEVICE): str}
-            ),
-            errors=self._errors,
-        )
-
-    async def _test_input(self, apikey, device):
-        try:
-            api = OnemeterApi(apikey, device)
-            await self.hass.async_add_executor_job(api.get_device)
-            return True
-        except Exception as ex:  # pylint: disable=broad-except
-            _LOGGER.error(
-                f"{DOMAIN} Exception in input test : %s - traceback: %s",
-                ex,
-                traceback.format_exc(),
-            )
-        return False
-
-    @staticmethod
-    @callback
-    def async_get_options_flow(config_entry):
-        return OnemeterOptionsFlowHandler(config_entry)
-
-
-class OnemeterOptionsFlowHandler(config_entries.OptionsFlow):
-    def __init__(self, config_entry):
-        self.config_entry = config_entry
-        self.options = dict(config_entry.options)
-
-    async def async_step_init(self, user_input=None):  # pylint: disable=unused-argument
-        return await self.async_step_apikey()
-
-    async def async_step_apikey(self, user_input=None):
-        if user_input is not None:
-            self.options.update(user_input)
-            return await self._update_options()
+            try:
+                info = await validate_input(self.hass, user_input)
+                return self.async_create_entry(title=info["title"], data=user_input)
+            except CannotConnect:
+                errors["base"] = "cannot_connect"
+            except InvalidAuth:
+                errors["base"] = "invalid_auth"
+            except Exception:  # pylint: disable=broad-except
+                _LOGGER.exception("Unexpected exception")
+                errors["base"] = "unknown"
 
         return self.async_show_form(
-            step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        CONF_SYNC_INTERVAL,
-                        default=self.options.get(
-                            CONF_SYNC_INTERVAL, DEFAULT_SYNC_INTERVAL
-                        ),
-                    ): vol.All(vol.Coerce(int))
-                }
-            ),
+            step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
         )
 
-    async def _update_options(self):
-        return self.async_create_entry(
-            title=self.config_entry.data.get(CONF_SYNC_INTERVAL), data=self.options
-        )
+
+class CannotConnect(HomeAssistantError):
+    """Error to indicate we cannot connect."""
+
+
+class InvalidAuth(HomeAssistantError):
+    """Error to indicate there is invalid auth."""

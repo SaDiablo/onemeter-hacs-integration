@@ -1,22 +1,43 @@
-"""Constants for OneMeter"""
-# Base component constants
-NAME = "OneMeter"
+"""Constants for the OneMeter Cloud integration."""
+from datetime import timedelta
+
 DOMAIN = "onemeter"
-VERSION = "0.0.0"
 
-# Platforms
-SENSOR = "sensor"
-PLATFORMS = [SENSOR]
+# Config flow
+CONF_API_KEY = "api_key"
 
-# Configuration and options
-CONF_ENABLED = "enabled"
-CONF_APIKEY = "apikey"
-CONF_DEVICE = "device"
-CONF_SYNC_INTERVAL = "sync_interval"
+# Defaults
+DEFAULT_NAME = "OneMeter"
+SCAN_INTERVAL = timedelta(minutes=5)
 
-
-DEFAULT_SYNC_INTERVAL = 900  # seconds
-
-#############
-
-HOST="cloud.onemeter.com"
+# Sensor types
+SENSOR_TYPES = {
+    "energy": {
+        "name": "Energy",
+        "icon": "mdi:lightning-bolt",
+        "unit": "kWh",
+        "device_class": "energy",
+        "state_class": "measurement"
+    },
+    "power": {
+        "name": "Power",
+        "icon": "mdi:flash",
+        "unit": "W",
+        "device_class": "power",
+        "state_class": "measurement"
+    },
+    "voltage": {
+        "name": "Voltage",
+        "icon": "mdi:sine-wave",
+        "unit": "V",
+        "device_class": "voltage",
+        "state_class": "measurement"
+    },
+    "current": {
+        "name": "Current",
+        "icon": "mdi:current-ac",
+        "unit": "A",
+        "device_class": "current",
+        "state_class": "measurement"
+    }
+}
