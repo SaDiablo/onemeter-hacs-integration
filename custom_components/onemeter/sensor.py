@@ -29,9 +29,10 @@ from homeassistant.helpers.update_coordinator import (
     UpdateFailed,
 )
 
-from .const import DOMAIN, SCAN_INTERVAL
-from .api import (
-    OneMeterApiClient,
+from .const import (
+    DOMAIN, 
+    SCAN_INTERVAL,
+    # Import all OBIS codes from const.py instead of api.py
     OBIS_TARIFF,
     OBIS_ENERGY_PLUS,
     OBIS_ENERGY_MINUS,
@@ -72,8 +73,9 @@ from .api import (
     OBIS_READOUT_TIMESTAMP,
     OBIS_READOUT_TIMESTAMP_CORRECTED,
     OBIS_ENERGY_CONSUMPTION_BLINK,
-    OBIS_DEVICE_STATUS
+    OBIS_DEVICE_STATUS,
 )
+from .api import OneMeterApiClient
 
 _LOGGER = logging.getLogger(__name__)
 
