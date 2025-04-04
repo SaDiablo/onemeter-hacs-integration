@@ -38,29 +38,36 @@ class OneMeterApiClient:
         """Initialize the client."""
         self.device_id = device_id
         self.api_key = api_key
+        self._session = None
 
     async def api_call(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Dict:
         """Make an API call."""
         url = f"{API_BASE_URL}{endpoint}"
-        headers = {"X-Device-API-Key": self.api_key}
+        headers = {"Authorization": self.api_key}
 
-        async with aiohttp.ClientSession() as session:
-            try:
-                with async_timeout.timeout(API_TIMEOUT):
-                    async with session.get(url, headers=headers, params=params) as response:
-                        if response.status == 200:
-                            return await response.json()
-                        else:
-                            _LOGGER.error(
-                                "API call error: %s - %s", response.status, await response.text()
-                            )
-                            return {}
-            except asyncio.TimeoutError:
-                _LOGGER.error("API timeout for %s", url)
-                return {}
-            except (aiohttp.ClientError, ValueError) as err:
-                _LOGGER.error("API error: %s", err)
-                return {}
+        if self._session is None:
+            self._session = aiohttp.ClientSession()
+
+        try:
+            with async_timeout.timeout(API_TIMEOUT):
+                async with self._session.get(url, headers=headers, params=params) as response:
+                    if response.status == 200:
+                        return await response.json()
+                    else:
+                        _LOGGER.error(
+                            "API call error: %s - %s", response.status, await response.text()
+                        )
+                        return {}
+        except asyncio.TimeoutError:
+            _LOGGER.error("API timeout for %s", url)
+            return {}
+        except (aiohttp.ClientError, ValueError) as err:
+            _LOGGER.error("API error: %s", err)
+            return {}
+
+    async def get_all_devices(self) -> Dict[str, Any]:
+        """Get a list of all devices from the API."""
+        return await self.api_call("devices")
 
     async def get_device_data(self) -> Dict[str, Any]:
         """Get device data from the API."""
@@ -141,3 +148,9 @@ class OneMeterApiClient:
             return None
         except (KeyError, IndexError, ValueError, TypeError):
             return None
+            
+    async def close(self) -> None:
+        """Close open client session."""
+        if self._session:
+            await self._session.close()
+            self._session = None
