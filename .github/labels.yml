@@ -1,0 +1,83 @@
+---
+# Labels names are important as they are used by Release Drafter to decide
+# which PR should go into which release and to detect breaking changes.
+
+- name: "breaking"
+  description: "Breaking change"
+  color: "ee0701"
+
+- name: "bug"
+  description: "Something isn't working"
+  color: "d73a4a"
+
+- name: "build"
+  description: "Build system and dependencies"
+  color: "bfdadc"
+
+- name: "ci"
+  description: "Continuous integration"
+  color: "44d8cc"
+
+- name: "dependencies"
+  description: "Pull requests that update a dependency file"
+  color: "0366d6"
+
+- name: "documentation"
+  description: "Improvements or additions to documentation"
+  color: "0075ca"
+
+- name: "duplicate"
+  description: "This issue or pull request already exists"
+  color: "cfd3d7"
+
+- name: "enhancement"
+  description: "New feature or request"
+  color: "a2eeef"
+
+- name: "good first issue"
+  description: "Good for newcomers"
+  color: "7057ff"
+
+- name: "help wanted"
+  description: "Extra attention is needed"
+  color: "008672"
+
+- name: "invalid"
+  description: "This doesn't seem right"
+  color: "e4e669"
+
+- name: "performance"
+  description: "Performance related issues"
+  color: "016175"
+
+- name: "pinned"
+  description: "Issues that won't be automatically closed by stale"
+  color: "fef2c0"
+
+- name: "planned"
+  description: "Issues that are planned for development"
+  color: "fef2c0" 
+
+- name: "question"
+  description: "Further information is requested"
+  color: "d876e3"
+
+- name: "refactoring"
+  description: "Refactoring"
+  color: "ef67c4"
+
+- name: "removal"
+  description: "Deprecations and removals"
+  color: "9ae7ea"
+
+- name: "stale"
+  description: "Stale issues and pull requests"
+  color: "000000"
+
+- name: "testing"
+  description: "Testing"
+  color: "0e8a16"
+
+- name: "wontfix"
+  description: "This will not be worked on"
+  color: "ffffff"
