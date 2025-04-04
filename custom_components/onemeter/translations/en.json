@@ -2,31 +2,38 @@
   "config": {
     "step": {
       "user": {
-        "title": "OneMeter Setup",
-        "description": "Enter the API key and UUID for the device you want to fetch data for",
+        "title": "Enter your OneMeter API Key",
+        "description": "Please provide your OneMeter Cloud API key to authenticate. {api_key_info}",
         "data": {
-          "apikey": "API key",
-          "device": "Device UUID"
-        },
-        "data_description": {
-          "apikey": "API key",
-          "device": "Device UUID"
+          "api_key": "API Key"
+        }
+      },
+      "device": {
+        "title": "Select OneMeter Device",
+        "description": "Found {device_count} devices. Please select which device you want to add.",
+        "data": {
+          "device_id": "Device",
+          "name": "Custom Name (Optional)"
         }
       }
     },
     "error": {
-      "auth": "Can't load device data. Either the API key or device UUID is wrong"
+      "cannot_connect": "Failed to connect to OneMeter Cloud API. Please check your API key and internet connection.",
+      "no_devices": "No devices found with this API key. Please ensure your account has devices associated with it.",
+      "device_not_found": "The selected device could not be found or is no longer available.",
+      "unknown": "An unexpected error occurred."
     },
     "abort": {
-      "single_instance_allowed": "Only a single instance is allowed."
+      "already_configured": "This OneMeter device is already configured.",
+      "no_unconfigured_devices": "All devices for this API key are already configured."
     }
   },
   "options": {
     "step": {
-      "user": {
-        "title": "OneMeter: Configuration",
+      "init": {
+        "title": "OneMeter Options",
         "data": {
-          "sync_interval": "Sync Interval to Fetch Data in Seconds"
+          "scan_interval": "Data Update Interval (seconds)"
         }
       }
     }

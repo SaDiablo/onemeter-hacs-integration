@@ -49,6 +49,38 @@ class OneMeterApiClient:
         self._cached_data = {}
         self._last_update = None
 
+    async def get_all_devices(self) -> Optional[Dict[str, Any]]:
+        """Get all devices from OneMeter Cloud API.
+        
+        Returns:
+            List of devices or None if request failed
+        """
+        if not self._api_key:
+            _LOGGER.error("API key is required for OneMeter API")
+            return None
+
+        headers = {"Authorization": self._api_key}
+
+        try:
+            async with async_timeout.timeout(30):
+                response = await self._session.get(
+                    f"{API_BASE_URL}/devices", 
+                    headers=headers
+                )
+                
+                if response.status == 200:
+                    data = await response.json()
+                    return data
+                elif response.status == 401:
+                    _LOGGER.error("API authentication error: Invalid API key")
+                    return None
+                else:
+                    _LOGGER.error(f"API error: {response.status}")
+                    return None
+        except (asyncio.TimeoutError, aiohttp.ClientError) as error:
+            _LOGGER.error(f"Error getting devices: {error}")
+            return None
+
     async def get_device_data(self) -> Optional[Dict[str, Any]]:
         """Get device data from OneMeter Cloud API.
         
