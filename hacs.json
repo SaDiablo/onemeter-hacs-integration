@@ -1,6 +1,5 @@
 {
   "name": "OneMeter Cloud integration",
   "render_readme": true,
-  "zip_release": true,
-  "filename": "onemeter.zip"
+  "zip_release": false
 }
