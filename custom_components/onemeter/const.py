@@ -86,6 +86,10 @@ OBIS_READOUT_TIMESTAMP_CORRECTED = "S_1_1_10" # Readout timestamp (corrected)
 OBIS_ENERGY_CONSUMPTION_BLINK = "S_1_1_12" # Energy consumption (based on blink measurements)
 OBIS_DEVICE_STATUS = "S_1_1_16" # Status of OneMeter Device
 
+# API Configuration
+API_BASE_URL = "https://cloud.onemeter.com/api/"
+API_TIMEOUT = 30
+
 # Icons
 ICON_ENERGY = "mdi:lightning-bolt"
 ICON_VOLTAGE = "mdi:flash"

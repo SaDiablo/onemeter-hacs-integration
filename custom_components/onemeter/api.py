@@ -1,297 +1,143 @@
-"""API client for OneMeter Cloud."""
-import logging
+"""API client for OneMeter Cloud API."""
 import asyncio
+import datetime
+import json
+import logging
+from typing import Any, Dict, List, Optional
+
 import aiohttp
 import async_timeout
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List
+
+from .const import (
+    API_BASE_URL,
+    API_TIMEOUT,
+    OBIS_BATTERY_VOLTAGE,
+    OBIS_ENERGY_ABS,
+    OBIS_ENERGY_MINUS,
+    OBIS_ENERGY_PLUS,
+    OBIS_ENERGY_R1,
+    OBIS_ENERGY_R4,
+    OBIS_METER_SERIAL,
+    OBIS_POWER,
+    OBIS_TARIFF,
+    RESP_DEVICES,
+    RESP_LAST_READING,
+    RESP_OBIS,
+    RESP_PREV_MONTH,
+    RESP_THIS_MONTH,
+    RESP_USAGE,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
-API_BASE_URL = "https://cloud.onemeter.com/api"
-
-# OBIS code constants based on provided data
-OBIS_TARIFF = "0_2_2"           # Tariff
-OBIS_ENERGY_PLUS = "1_8_0"      # Energy A+ (total)
-OBIS_ENERGY_MINUS = "2_8_0"     # Energy A- (total)
-OBIS_ENERGY_R1 = "5_8_0"        # Energy R1 (total)
-OBIS_ENERGY_R4 = "8_8_0"        # Energy R4 (total)
-OBIS_ENERGY_ABS = "15_8_0"      # Energy |A| (total)
-OBIS_POWER = "16_7_0"           # Instantaneous power P
-
-# Diagnostic OBIS codes
-OBIS_BATTERY_VOLTAGE = "S_1_1_2"    # Battery voltage
-OBIS_METER_SERIAL = "C_1_0"         # Meter serial number
-OBIS_UART_PARAMS = "S_1_1_8"        # UART communication parameters
-
-# Hidden diagnostic OBIS codes
-OBIS_METER_ERROR = "F_F_0"          # Meter error
-OBIS_PHYSICAL_ADDRESS = "C_90_1"    # Physical address
-OBIS_SUCCESSFUL_READINGS = "S_1_1_6" # Number of successful readings
-OBIS_FAILED_READINGS_1 = "S_1_1_7"  # Number of failed readings
-OBIS_FAILED_READINGS_2 = "S_1_1_19" # Number of failed readings (alternate)
-
 
 class OneMeterApiClient:
-    """API Client for OneMeter Cloud."""
+    """API client for OneMeter Cloud."""
 
-    def __init__(self, device_id: str, api_key: Optional[str] = None, session: Optional[aiohttp.ClientSession] = None):
-        """Initialize the API client.
-        
-        Args:
-            device_id: The UUID of the OneMeter device
-            api_key: Optional API key for authentication
-            session: Optional aiohttp session
-        """
-        self._device_id = device_id
-        self._api_key = api_key
-        self._session = session or aiohttp.ClientSession()
-        self._cached_data = {}
-        self._last_update = None
+    def __init__(self, device_id: str, api_key: str):
+        """Initialize the client."""
+        self.device_id = device_id
+        self.api_key = api_key
 
-    async def get_all_devices(self) -> Optional[Dict[str, Any]]:
-        """Get all devices from OneMeter Cloud API.
-        
-        Returns:
-            List of devices or None if request failed
-        """
-        if not self._api_key:
-            _LOGGER.error("API key is required for OneMeter API")
-            return None
+    async def api_call(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Dict:
+        """Make an API call."""
+        url = f"{API_BASE_URL}{endpoint}"
+        headers = {"X-Device-API-Key": self.api_key}
 
-        headers = {"Authorization": self._api_key}
+        async with aiohttp.ClientSession() as session:
+            try:
+                with async_timeout.timeout(API_TIMEOUT):
+                    async with session.get(url, headers=headers, params=params) as response:
+                        if response.status == 200:
+                            return await response.json()
+                        else:
+                            _LOGGER.error(
+                                "API call error: %s - %s", response.status, await response.text()
+                            )
+                            return {}
+            except asyncio.TimeoutError:
+                _LOGGER.error("API timeout for %s", url)
+                return {}
+            except (aiohttp.ClientError, ValueError) as err:
+                _LOGGER.error("API error: %s", err)
+                return {}
 
-        try:
-            async with async_timeout.timeout(30):
-                response = await self._session.get(
-                    f"{API_BASE_URL}/devices", 
-                    headers=headers
-                )
-                
-                if response.status == 200:
-                    data = await response.json()
-                    return data
-                elif response.status == 401:
-                    _LOGGER.error("API authentication error: Invalid API key")
-                    return None
-                else:
-                    _LOGGER.error(f"API error: {response.status}")
-                    return None
-        except (asyncio.TimeoutError, aiohttp.ClientError) as error:
-            _LOGGER.error(f"Error getting devices: {error}")
-            return None
+    async def get_device_data(self) -> Dict[str, Any]:
+        """Get device data from the API."""
+        return await self.api_call(f"devices/{self.device_id}")
 
-    async def get_device_data(self) -> Optional[Dict[str, Any]]:
-        """Get device data from OneMeter Cloud API.
-        
-        Returns:
-            Device data dictionary or None if request failed
-        """
-        # Cache data for 5 minutes to avoid excessive API calls
-        now = datetime.now()
-        if self._last_update and now - self._last_update < timedelta(minutes=5) and self._cached_data:
-            return self._cached_data
-
-        if not self._api_key:
-            _LOGGER.error("API key is required for OneMeter API")
-            return None
-
-        headers = {"Authorization": self._api_key}
-
-        try:
-            async with async_timeout.timeout(30):
-                response = await self._session.get(
-                    f"{API_BASE_URL}/devices/{self._device_id}", 
-                    headers=headers
-                )
-                
-                if response.status == 200:
-                    data = await response.json()
-                    
-                    # Cache successful results
-                    self._cached_data = data
-                    self._last_update = now
-                    return data
-                elif response.status == 401:
-                    _LOGGER.error("API authentication error: Invalid API key")
-                    return None
-                else:
-                    _LOGGER.error(f"API error: {response.status}")
-                    return None
-        except (asyncio.TimeoutError, aiohttp.ClientError) as error:
-            _LOGGER.error(f"Error getting device data: {error}")
-            return None
-
-    async def get_readings(self, limit: int = 1, codes: Optional[List[str]] = None) -> Optional[Dict[str, Any]]:
-        """Get latest meter readings from OneMeter Cloud API.
-        
-        Args:
-            limit: Number of readings to retrieve (default: 1)
-            codes: List of OBIS codes to retrieve
-            
-        Returns:
-            Readings data dictionary or None if request failed
-        """
-        if not self._api_key:
-            _LOGGER.error("API key is required for OneMeter API")
-            return None
-
-        headers = {"Authorization": self._api_key}
+    async def get_readings(self, count: int = 1, obis_codes: List[str] = None) -> Dict[str, Any]:
+        """Get readings data for specific OBIS codes."""
+        if obis_codes is None:
+            obis_codes = [
+                OBIS_ENERGY_PLUS,
+                OBIS_ENERGY_MINUS,
+                OBIS_ENERGY_R1,
+                OBIS_ENERGY_R4,
+                OBIS_ENERGY_ABS,
+                OBIS_POWER,
+                OBIS_BATTERY_VOLTAGE,
+                OBIS_METER_SERIAL,
+                OBIS_TARIFF,
+            ]
         
         params = {
-            "limit": limit,
-            "skip": 0,
-            "sort": "descending"
+            "obis": ",".join(obis_codes),
+            "count": count,
         }
         
-        if codes:
-            params["codes"] = ",".join(codes)
+        return await self.api_call(f"devices/{self.device_id}/readings", params)
 
+    def extract_device_value(self, data: Dict[str, Any], obis_code: str) -> Any:
+        """Extract a value from device data by OBIS code."""
         try:
-            async with async_timeout.timeout(30):
-                response = await self._session.get(
-                    f"{API_BASE_URL}/devices/{self._device_id}/readings", 
-                    headers=headers,
-                    params=params
-                )
-                
-                if response.status == 200:
-                    data = await response.json()
-                    return data
-                elif response.status == 401:
-                    _LOGGER.error("API authentication error: Invalid API key")
-                    return None
-                else:
-                    _LOGGER.error(f"API error: {response.status}")
-                    return None
-        except (asyncio.TimeoutError, aiohttp.ClientError) as error:
-            _LOGGER.error(f"Error getting readings: {error}")
+            if RESP_DEVICES in data:
+                device = data[RESP_DEVICES][0]  # Assume first device
+                if RESP_LAST_READING in device and RESP_OBIS in device[RESP_LAST_READING]:
+                    obis_data = device[RESP_LAST_READING][RESP_OBIS]
+                    if obis_code in obis_data:
+                        return obis_data[obis_code]
+            elif RESP_LAST_READING in data and RESP_OBIS in data[RESP_LAST_READING]:
+                obis_data = data[RESP_LAST_READING][RESP_OBIS]
+                if obis_code in obis_data:
+                    return obis_data[obis_code]
+            return None
+        except (KeyError, IndexError, TypeError):
             return None
 
-    async def get_summary(self, from_date: datetime, to_date: datetime) -> Optional[Dict[str, Any]]:
-        """Get energy usage summary from OneMeter Cloud API.
-        
-        Args:
-            from_date: Start date for summary
-            to_date: End date for summary
-            
-        Returns:
-            Summary data dictionary or None if request failed
-        """
-        if not self._api_key:
-            _LOGGER.error("API key is required for OneMeter API")
-            return None
-
-        headers = {"Authorization": self._api_key}
-        
-        params = {
-            "from": from_date.isoformat(),
-            "to": to_date.isoformat()
-        }
-
+    def extract_reading_value(self, data: Dict[str, Any], obis_code: str) -> Any:
+        """Extract a value from readings data by OBIS code."""
         try:
-            async with async_timeout.timeout(30):
-                response = await self._session.get(
-                    f"{API_BASE_URL}/devices/{self._device_id}/report/summary", 
-                    headers=headers,
-                    params=params
-                )
-                
-                if response.status == 200:
-                    data = await response.json()
-                    return data
-                elif response.status == 401:
-                    _LOGGER.error("API authentication error: Invalid API key")
-                    return None
-                else:
-                    _LOGGER.error(f"API error: {response.status}")
-                    return None
-        except (asyncio.TimeoutError, aiohttp.ClientError) as error:
-            _LOGGER.error(f"Error getting summary: {error}")
+            if data and len(data) > 0:
+                reading = data[0]  # Get most recent reading
+                if RESP_OBIS in reading and obis_code in reading[RESP_OBIS]:
+                    return reading[RESP_OBIS][obis_code]
+            return None
+        except (KeyError, IndexError, TypeError):
             return None
 
-    def extract_reading_value(self, readings_data: Dict[str, Any], obis_code: str) -> Optional[float]:
-        """Extract value from readings response for a specific OBIS code.
-        
-        Args:
-            readings_data: Readings data from API
-            obis_code: OBIS code to extract
-            
-        Returns:
-            Value for the OBIS code or None if not found
-        """
-        if not readings_data or "readings" not in readings_data or not readings_data["readings"]:
+    def get_this_month_usage(self, data: Dict[str, Any]) -> Optional[float]:
+        """Get this month's usage from device data."""
+        try:
+            if RESP_DEVICES in data:
+                device = data[RESP_DEVICES][0]
+                if RESP_USAGE in device and RESP_THIS_MONTH in device[RESP_USAGE]:
+                    return float(device[RESP_USAGE][RESP_THIS_MONTH])
+            elif RESP_USAGE in data and RESP_THIS_MONTH in data[RESP_USAGE]:
+                return float(data[RESP_USAGE][RESP_THIS_MONTH])
             return None
-            
-        # Get the latest reading
-        latest_reading = readings_data["readings"][0]
-        return latest_reading.get(obis_code)
+        except (KeyError, IndexError, ValueError, TypeError):
+            return None
 
-    def extract_device_value(self, device_data: Dict[str, Any], obis_code: str) -> Optional[Any]:
-        """Extract value from device response for a specific OBIS code.
-        
-        Args:
-            device_data: Device data from API
-            obis_code: OBIS code to extract
-            
-        Returns:
-            Value for the OBIS code or None if not found
-        """
-        if not device_data or not isinstance(device_data, dict):
+    def get_previous_month_usage(self, data: Dict[str, Any]) -> Optional[float]:
+        """Get previous month's usage from device data."""
+        try:
+            if RESP_DEVICES in data:
+                device = data[RESP_DEVICES][0]
+                if RESP_USAGE in device and RESP_PREV_MONTH in device[RESP_USAGE]:
+                    return float(device[RESP_USAGE][RESP_PREV_MONTH])
+            elif RESP_USAGE in data and RESP_PREV_MONTH in data[RESP_USAGE]:
+                return float(data[RESP_USAGE][RESP_PREV_MONTH])
             return None
-            
-        # Handle the case where we get a devices array
-        if "devices" in device_data and isinstance(device_data["devices"], list) and len(device_data["devices"]) > 0:
-            device_data = device_data["devices"][0]
-            
-        if "lastReading" in device_data and "OBIS" in device_data["lastReading"]:
-            return device_data["lastReading"]["OBIS"].get(obis_code)
-            
-        return None
-        
-    def get_this_month_usage(self, device_data: Dict[str, Any]) -> Optional[float]:
-        """Extract this month's energy usage from device data.
-        
-        Args:
-            device_data: Device data from API
-            
-        Returns:
-            This month's energy usage or None if not found
-        """
-        if not device_data or not isinstance(device_data, dict):
+        except (KeyError, IndexError, ValueError, TypeError):
             return None
-            
-        # Handle the case where we get a devices array
-        if "devices" in device_data and isinstance(device_data["devices"], list) and len(device_data["devices"]) > 0:
-            device_data = device_data["devices"][0]
-            
-        if "usage" in device_data and "thisMonth" in device_data["usage"]:
-            return device_data["usage"]["thisMonth"]
-            
-        return None
-        
-    def get_previous_month_usage(self, device_data: Dict[str, Any]) -> Optional[float]:
-        """Extract previous month's energy usage from device data.
-        
-        Args:
-            device_data: Device data from API
-            
-        Returns:
-            Previous month's energy usage or None if not found
-        """
-        if not device_data or not isinstance(device_data, dict):
-            return None
-            
-        # Handle the case where we get a devices array
-        if "devices" in device_data and isinstance(device_data["devices"], list) and len(device_data["devices"]) > 0:
-            device_data = device_data["devices"][0]
-            
-        if "usage" in device_data and "previousMonth" in device_data["usage"] and device_data["usage"]["previousMonth"] is not None:
-            return device_data["usage"]["previousMonth"]
-            
-        return None
-            
-    async def close(self):
-        """Close the session."""
-        if self._session:
-            await self._session.close()
