@@ -1,0 +1,2911 @@
+---
+openapi: 3.0.2
+info:
+  title: OneMeter Cloud API
+  version: 1.0.0
+  description: "# Authentication\n\nThe API key is a credential which authenticates\
+    \ and authorizes every action done in OneMeter Cloud, including device settings\
+    \ modifications and data download.  \nIn order to avoid unauthorized access **it\
+    \ is essential to keep the API key secret**. \n\nYour API key is <code id=\"api-key\"\
+    >&lt;shown here after requesting it&gt;</code>\n\n<div id=\"no-api-access\" style=\"\
+    padding: 15px; background: #ffe18f;\">\nOneMeter Cloud API allows you to integrate\
+    \ OneMeter Cloud data with your application\n\nTo get OneMeter Cloud API access,\
+    \ <a href=\"https://support.onemeter.com/hc/en-us/articles/4402465349137\">enable\
+    \ it in your account settings</a>.\n</div>\n\n\n<security-definitions />\n\nAPI\
+    \ calls without or with an invalid API key will result in an error response:\n\
+    ```json\nHTTP/1.1 401 Unauthorized\n{\n\t\"status\": \"error\",\n\t\"error\":\
+    \ \"Unauthorized\",\n\t\"message\": \"Authorization failed\",\n\t\"statusCode\"\
+    : 401\n}\n```\n\n## curl example\n`curl -H \"Authorization: xxxxxxxxxxxxxxx\"\
+    \ \"https://cloud.onemeter.com/api/devices\"`\n# Integrations\nThe following section\
+    \ provides integration examples for several Smart Home solutions which may be\
+    \ used as a starting off point for further integration.\n\n## Home Assistant\n\
+    Use the [RESTful Sensor](https://www.home-assistant.io/components/rest/) component\
+    \ to get your OneMeter values in conjunction with the [Utility Meter](https://www.home-assistant.io/components/utility_meter/)\
+    \ component to track your energy consumption.\n```yaml\n- platform: rest\n  scan_interval:\
+    \ 900 # Makes a request every 15min\n  name: OneMeter\n  resource: https://cloud.onemeter.com/api/devices/<DEVICE_ID>\n\
+    \  value_template: \"{{ value_json.lastReading.OBIS['15_8_0'] }} {{ value_json.lastReading.OBIS['S_1_1_2']\
+    \ }} {{ value_json.lastReading.OBIS['S_1_1_4'] }} {{ value_json.usage['thisMonth']\
+    \ }} {{ value_json.usage['previousMonth'] }} {{ value_json.firmware['currentVersion']\
+    \ }}\"\n  force_update: true\n  headers:\n    Authorization: <API_KEY>\n\n- platform:\
+    \ template\n  sensors:\n    onemeter_kwh:\n      friendly_name: \"kWh\"\n    \
+    \  unit_of_measurement: \"kWh\"\n      icon_template: mdi:flash\n      value_template:\
+    \ \"{{ states.sensor.onemeter.state.split(' ')[0] }}\"\n    onemeter_voltage:\n\
+    \      friendly_name: \"OneMeter Battery Voltage\"\n      unit_of_measurement:\
+    \ \"v\"\n      icon_template: mdi:battery\n      value_template: \"{{ states.sensor.onemeter.state.split('\
+    \ ')[1] }}\"\n    onemeter_timestamp:\n      friendly_name: \"OneMeter Last Readout\"\
+    \n      icon_template: mdi:clock\n      value_template: \"{{ states.sensor.onemeter.state.split('\
+    \ ')[2] }}\"\n    onemeter_this_month:\n      friendly_name: \"Current Consumption\"\
+    \n      unit_of_measurement: \"kWh\"\n      icon_template: mdi:calendar-month\n\
+    \      value_template: \"{{ states.sensor.onemeter.state.split(' ')[3] }}\"\n\
+    \    onemeter_previous_month:\n      friendly_name: \"Previous Consumption\"\n\
+    \      unit_of_measurement: \"kWh\"\n      icon_template: mdi:calendar-month-outline\n\
+    \      value_template: \"{{ states.sensor.onemeter.state.split(' ')[4] }}\"\n\
+    \    onemeter_firmware:\n      friendly_name: \"OneMeter Firmware Version\"\n\
+    \      icon_template: mdi:chip\n      value_template: \"{{ states.sensor.onemeter.state.split('\
+    \ ')[5] }}\"\n```\n\n## openHAB\nUse the [HTTP](https://www.openhab.org/addons/bindings/http1/)\
+    \ binding, [JsonPath](https://www.openhab.org/addons/transformations/jsonpath/)\
+    \ & [map](https://www.openhab.org/addons/transformations/map/) transformations\
+    \ to get OneMeter values.\n\n### http.cfg\n```java\nonemeter.url=https://cloud.onemeter.com/api/devices/<DEVICE_ID>{Authorization=<API_KEY>}\n\
+    onemeter.updateInterval=900000\n```\n\n### onemeter.items\n```java\nNumber onemeter_kwh\
+    \ \"OneMeter kWh [%f]\" <kwh> { http=\"<[onemeter:900000:JSONPATH($.lastReading.OBIS['15_8_0'])]\"\
+    \ }\nNumber onemeter_voltage \"OneMeter Battery Voltage [%f]\" <voltage> { http=\"\
+    <[onemeter:900000:JSONPATH($.lastReading.OBIS['S_1_1_2'])]\" }\nDateTime onemeter_timestamp\
+    \ \"OneMeter Last Readout [%t]\" <timestamp> { http=\"<[onemeter:900000:JSONPATH($.lastReading.OBIS['S_1_1_4'])]\"\
+    \ }\nNumber onemeter_this_month \"OneMeter Current Consumption [%f]\" <this_month>\
+    \ { http=\"<[onemeter:900000:JSONPATH($.usage['thisMonth'])]\" }\nNumber onemeter_previous_month\
+    \ \"OneMeter Previous Consumption [%f]\" <previous_month> { http=\"<[onemeter:900000:JSONPATH($.usage['previousMonth'])]\"\
+    \ }\nString onemeter_firmware \"OneMeter Firmware Version [%s]\" <firmware> {\
+    \ http=\"<[onemeter:900000:JSONPATH($.firmware.['currentVersion'])]\" }\n```\n\
+    \n### onemeter.sitemap\n```java\nsitemap onemeter label=\"OneMeter\" {\n  Frame\
+    \ label=\"OneMeter\" {\n    Text item=onemeter_kwh\n    Text item=onemeter_voltage\n\
+    \    Text item=onemeter_timestamp\n    Text item=onemeter_this_month\n    Text\
+    \ item=onemeter_previous_month\n    Text item=onemeter_firmware\n  }\n}\n```\n\
+    \n## Domoticz\nUse the [HTTP/HTTPS poller](https://www.domoticz.com/wiki/Hardware_Setup)\
+    \ hardware with the Lua script below and create virtual device for each OneMeter\
+    \ value you want to get.\n\n### Hardware\n```\nName: OneMeter\nType: HTTP/HTTPS\
+    \ poller\nData Timeout: Disabled\nMethod: GET\nContentType: application/json\n\
+    Headers: Authorization: <API_KEY>\nURL: https://cloud.onemeter.com/api/devices/<DEVICE_ID>\n\
+    Command: onemeter.lua\nRefresh: 900\n```\n\n### onemeter.lua\n```lua\nreq = request['content'];\n\
+    \nidxs = {'1', '2', '3', '4', '5', '6'}\nvalues = {'.lastReading.OBIS.15_8_0',\
+    \ '.lastReading.OBIS.S_1_1_2', '.lastReading.OBIS.S_1_1_4', '.usage.thisMonth',\
+    \ '.usage.previousMonth', '.firmware.currentVersion'}\n\nfor i, idx in ipairs(idxs)\
+    \ do \n  local s = domoticz_applyJsonPath(req, values[i])\n  domoticz_updateDevice(idx,'',s)\n\
+    end\n```"
+  contact:
+    url: https://cloud.onemeter.com
+    email: contact@onemeter.com
+servers:
+  - url: https://cloud.onemeter.com/api/
+    description: ''
+paths:
+  /devices/:
+    get:
+      tags:
+        - Devices
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/device-response'
+          description: Successful response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error-response'
+              examples:
+                QueryError:
+                  value:
+                    status: error
+                    error: QueryError
+                    message: Invalid query parameters
+          description: Bad request
+      security:
+        - API-Key: []
+      summary: Get all devices
+      description: Get a list of all devices
+  /devices/{id}/export/{aggregation}/{format}:
+    get:
+      tags:
+        - Devices
+      parameters:
+        - name: limit
+          description: |-
+            Default value: 357120
+
+            Size range: 1-357120
+          schema:
+            type: number
+          in: query
+          required: false
+        - name: skip
+          description: |-
+            Default value: 0
+
+            Allowed values: >0
+          schema:
+            type: number
+          in: query
+        - name: sort
+          description: |-
+            Default value: ascending
+
+            Allowed values: "descending", "ascending"
+          schema:
+            type: string
+          in: query
+        - name: from
+          description: 'Datetime, at least initialReading.date'
+          schema:
+            type: string
+          in: query
+        - name: to
+          description: 'Datetime, maximum lastReading.date'
+          schema:
+            type: string
+          in: query
+        - name: columns
+          description: alias for the codes field
+          schema:
+            type: string
+          in: query
+        - name: codes
+          description: |-
+            Comma separated list of OBIS codes
+            Limit data to the given OBIS codes
+          schema:
+            type: string
+          in: query
+        - name: locale
+          description: |-
+            Language setting
+
+            Default value: en
+
+            Allowed values: "pl", "en"
+          schema:
+            type: string
+          in: query
+        - name: patch
+          description: "\t\nPatch holes in data\n\nDefault value: false"
+          schema:
+            type: boolean
+          in: query
+        - name: applyMultiplier
+          description: "\t\nApply multiplier from beacon config\n\nDefault value: false"
+          schema:
+            type: boolean
+          in: query
+        - name: timezone
+          description: 'Default value: 0'
+          schema:
+            type: number
+          in: query
+        - name: columnSeparator
+          description: 'Default value: ;'
+          schema:
+            type: string
+          in: query
+        - name: decimalSeparator
+          schema:
+            type: string
+          in: query
+        - name: beaconName
+          schema:
+            type: string
+          in: query
+      responses:
+        '200':
+          content:
+            text/csv:
+              schema:
+                enum:
+                  - text/csv
+                  - text/xlsx
+          description: Downloading csv or xlsx file to a computer.
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error-response'
+              examples:
+                Invalid UUID:
+                  value:
+                    status: error
+                    error: InvalidQuery
+                    message: Invalid UUID
+          description: |-
+            Available error messages:
+            Invalid query params
+            Invalid UUID
+            No date query
+            Invalid aggregation
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error-response'
+              examples:
+                No readings found:
+                  value:
+                    status: error
+                    error: NotFoundError
+                    message: No readings found
+          description: |-
+            Available error messages:
+            No results
+            Device of given UUID not found
+            No readings found
+      security:
+        - API-Key: []
+      description: Export usages or readings device data.
+    parameters:
+      - name: id
+        description: Device UUID
+        schema:
+          type: string
+        in: path
+        required: true
+      - name: aggregation
+        description: "\t"
+        schema:
+          enum:
+            - quarter
+            - hour
+            - day
+        in: path
+        required: true
+      - name: format
+        description: ''
+        schema:
+          enum:
+            - data.csv
+            - data.xlsx
+        in: path
+        required: true
+  /devices/{id}/readings:
+    description: ''
+    get:
+      tags:
+        - Devices
+      parameters:
+        - name: limit
+          description: "\t\nDefault value: 357120\n\nSize range: 1-357120"
+          schema:
+            type: number
+          in: query
+          required: true
+        - name: skip
+          description: "\t\nDefault value: 0\n\nAllowed values: >0"
+          schema:
+            type: number
+          in: query
+          required: true
+        - name: sort
+          description: "\t\nDefault value: ascending\n\nAllowed values: \"descending\"\
+            , \"ascending\""
+          schema:
+            type: string
+          in: query
+          required: true
+        - name: from
+          description: "\t\nDatetime, at least initialReading.date"
+          schema:
+            type: string
+          in: query
+          required: false
+        - name: to
+          description: "\t\nDatetime, maximum lastReading.date"
+          schema:
+            type: string
+          in: query
+        - name: columns
+          description: alias for the codes field
+          schema:
+            type: string
+          in: query
+        - name: codes
+          description: |-
+            Comma separated list of OBIS codes
+            Limit data to the given OBIS codes
+          schema:
+            type: string
+          in: query
+        - name: locale
+          description: |-
+            Language setting
+
+            Default value: en
+          schema:
+            enum:
+              - pl
+              - en
+          in: query
+        - name: applyMultiplier
+          description: |-
+            Apply multiplier from beacon config
+
+            Default value: false
+          schema:
+            type: boolean
+          in: query
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/readings-response'
+              examples:
+                Readings:
+                  value:
+                    readings:
+                      - F_8_0: 22738.78
+                        date: 2018-06-15T00:00:00.000Z
+                      - F_8_0: 22740.16
+                        date: 2018-06-16T00:00:00.000Z
+                    meta:
+                      keys:
+                        - F_8_0
+                      range:
+                        from: 2018-06-15T00:00:00.000Z
+                        to: 2018-06-16T00:00:00.000Z
+                      OBIS:
+                        F_8_0:
+                          key: ABSOLUTE_ACTIVE_ENERGY_TOTAL
+                          constant: false
+                          category: energy
+                          subcategory: active
+                          unit: kWh
+                          description:
+                            short: Energy |A| (total)
+                            long: Absolute active energy |A| (total)
+                      count: 1910
+          description: Successfull response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error-response'
+              examples:
+                Invalid query:
+                  value:
+                    status: error
+                    error: Invalid query
+                    message: Invalid UUID
+          description: Invalid query
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error-response'
+              examples:
+                DeviceNotFound:
+                  value:
+                    status: error
+                    error: DeviceNotFound
+                    message: Device of given UUID not found
+          description: DeviceNotFound
+      security:
+        - API-Key: []
+      description: Get all device readings
+    parameters:
+      - name: id
+        description: Device UUID
+        schema:
+          type: string
+        in: path
+        required: true
+  /devices/{id}/usageProfile/{type}:
+    description: ''
+    get:
+      tags:
+        - Devices
+      parameters:
+        - name: codes
+          description: "\t\nLimit the data to certain OBIS codes, eg \"1_8_0\"; comma\
+            \ separated list"
+          schema:
+            type: string
+          in: query
+        - name: locale
+          description: 'Respone language. Available values - "en", "pl"'
+          schema:
+            type: string
+          in: query
+        - name: forceRecalculate
+          description: Force a recalculation of a given beacons profile type
+          schema:
+            type: boolean
+          in: query
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/usageProfile-response'
+              examples:
+                usageProfile:
+                  value:
+                    _id: <mongodb-id>
+                    data:
+                      - '1_8_0': 118.45172413798242
+                        time:
+                          hour: 0
+                      - '1_8_0': 99.30882352932959
+                        time:
+                          hour: 1
+                      - '1_8_0': 97.72058823529412
+                        time:
+                          hour: 23
+                    UUID: 03b38411-d37b-4957-8d5b-641db7bde29a
+                    createdAt: 2018-06-10T13:31:28.123Z
+                    type: dayWeekend
+                    meta:
+                      keys:
+                        - 180
+                      OBIS:
+                        '1_8_0':
+                          key: POSITIVE_ACTIVE_ENERGY_TOTAL
+                          constant: false
+                          category: energy
+                          subcategory: active
+                          unit: kWh
+                          description:
+                            short: Energy A+ (total)
+                            long: Positive active energy A+ (total)
+          description: Successfull response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error-response'
+              examples:
+                Invalid query:
+                  value:
+                    status: error
+                    error: Invalid query
+                    message: Invalid UUID
+                Invalid profile type:
+                  value:
+                    status: error
+                    error: 'Invalid profile type: <type>'
+                    message: Device of given UUID not found
+          description: Invalid query
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error-response'
+              examples:
+                DeviceNotFound:
+                  value:
+                    status: error
+                    error: DeviceNotFound
+                    message: Device of given UUID not found
+          description: DeviceNotFound
+      security:
+        - API-Key: []
+      description: Get device consumption profile
+    parameters:
+      - name: id
+        description: Device UUID
+        schema:
+          type: string
+        in: path
+        required: true
+      - name: type
+        description: Profile type
+        schema:
+          enum:
+            - allDayTraces
+            - dailyUsageInTariffs
+            - dayFine
+            - dayWeekend
+            - dayWorking
+            - loadDuration
+            - powerOverspends
+            - tariffOverallSummary
+            - weekCoarse
+            - weekFine
+        in: path
+        required: true
+  /devices/{id}/export/{data}/{aggregation}/data:
+    get:
+      tags:
+        - Devices
+      parameters:
+        - name: limit
+          description: |-
+            Default value: 357120
+
+            Size range: 1-357120
+          schema:
+            type: number
+          in: query
+          required: false
+        - name: skip
+          description: |-
+            Default value: 0
+
+            Allowed values: >0
+          schema:
+            type: number
+          in: query
+        - name: sort
+          description: |-
+            Default value: ascending
+
+            Allowed values: "descending", "ascending"
+          schema:
+            type: string
+          in: query
+        - name: from
+          description: 'Datetime, at least initialReading.date'
+          schema:
+            type: string
+          in: query
+        - name: to
+          description: 'Datetime, maximum lastReading.date'
+          schema:
+            type: string
+          in: query
+        - name: columns
+          description: alias for the codes field
+          schema:
+            type: string
+          in: query
+        - name: codes
+          description: |-
+            Comma separated list of OBIS codes
+            Limit data to the given OBIS codes
+          schema:
+            type: string
+          in: query
+        - name: locale
+          description: |-
+            Language setting
+
+            Default value: en
+
+            Allowed values: "pl", "en"
+          schema:
+            type: string
+          in: query
+        - name: patch
+          description: "\t\nPatch holes in data\n\nDefault value: false"
+          schema:
+            type: boolean
+          in: query
+        - name: applyMultiplier
+          description: "\t\nApply multiplier from beacon config\n\nDefault value: false"
+          schema:
+            type: boolean
+          in: query
+        - name: queryMissing
+          description: "\t\nrun queryForMissingUsages step\nQueries usages service for\
+            \ missing data\n\nDefault value: true"
+          schema:
+            type: boolean
+          in: query
+        - name: addLastUsage
+          description: "\t\nAdd last reading to usage data, if aggregation level is\
+            \ not \"quarter\"\n\nDefault value: false"
+          schema:
+            type: boolean
+          in: query
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/readings-response'
+              examples:
+                Successfull response:
+                  value:
+                    readings:
+                      - F_8_0: 22738.78
+                        date: 2018-06-15T00:00:00.000Z
+                      - F_8_0: 22740.16
+                        date: 2018-06-16T00:00:00.000Z
+                    meta:
+                      keys:
+                        - F_8_0
+                      range:
+                        from: 2018-06-15T00:00:00.000Z
+                        to: 2018-06-16T00:00:00.000Z
+                      OBIS:
+                        F_8_0:
+                          key: ABSOLUTE_ACTIVE_ENERGY_TOTAL
+                          constant: false
+                          category: energy
+                          subcategory: active
+                          unit: kWh
+                          description:
+                            short: Energy |A| (total)
+                            long: Absolute active energy |A| (total)
+                      count: 1910
+          description: Export aggregated readings or usages data in JSON format
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error-response'
+              examples:
+                Invalid UUID:
+                  value:
+                    status: error
+                    error: InvalidQuery
+                    message: Invalid UUID
+          description: |-
+            Available error messages:
+            Invalid query params
+            Invalid UUID
+            No date query
+            Invalid aggregation
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error-response'
+              examples:
+                No readings found:
+                  value:
+                    status: error
+                    error: NotFoundError
+                    message: No readings found
+          description: |-
+            Available error messages:
+            No results
+            Device of given UUID not found
+            No readings found
+      security:
+        - API-Key: []
+      description: Export aggregated readings or usages data
+    parameters:
+      - name: id
+        description: Device UUID
+        schema:
+          type: string
+        in: path
+        required: true
+      - name: aggregation
+        description: "\t"
+        schema:
+          enum:
+            - quarter
+            - hour
+            - day
+        in: path
+        required: true
+      - name: data
+        schema:
+          enum:
+            - readings
+            - usages
+        in: path
+        required: true
+  /devices/{id}/report/summary:
+    get:
+      tags:
+        - Devices
+      parameters:
+        - name: from
+          schema:
+            format: date-time
+            type: string
+          in: query
+          required: true
+        - name: to
+          schema:
+            format: date-time
+            type: string
+          in: query
+          required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/summary-response'
+              examples:
+                successfull response:
+                  value:
+                    range:
+                      from: 2019-02-28T23:00:00.000Z
+                      to: 2019-03-01T09:00:00.000Z
+                    profile:
+                      activeEnergy:
+                        data:
+                          - usage: 2.9500000000007276
+                            tariff: Cała doba
+                        UUID: 0e65e881-26e0-4206-b716-767998cd8b01
+                        createdAt: 2019-03-01T09:12:32.758Z
+                        type: tariffOverallSummary
+                    usage:
+                      activeEnergy: 2.9500000000007276
+                    prices:
+                      distribution:
+                        constantComponent: 9.29
+                        interimComponent: 1.9
+                        standingCharge: 2.24
+                        usageComponents:
+                          - zone: Cała doba
+                            qualityComponent: 0.03746500000000924
+                            variableComponent: 0.39795500000009815
+                        total: 13.865420000000107
+                      retail:
+                        constantComponent: 5.28
+                        usageComponents:
+                          - zone: Cała doba
+                            price: 1.0021150000002472
+                        total: 6.282115000000248
+                    contract: G11-3f
+                    meta:
+                      activeEnergyCode: 1580
+          description: Successfull response
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error-response'
+              examples:
+                ReportNotAvailable:
+                  value:
+                    status: error
+                    error: ReportNotAvailable
+                    message: Misconfigured beacon
+                InvalidQuery:
+                  value:
+                    status: error
+                    error: Invalid query
+                    message: Invalid UUID
+                Invalid report bounds:
+                  value:
+                    status: error
+                    error: Invalid query
+                    message: Invalid report bounds
+          description: Bad request
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error-response'
+              examples:
+                DeviceNotFound:
+                  value:
+                    status: error
+                    error: DeviceNotFound
+                    message: Device of given UUID not found
+          description: Device of given UUID not found
+      security:
+        - API-Key: []
+      description: |
+        Get device summary
+    parameters:
+      - name: id
+        description: Device UUID
+        schema:
+          type: string
+        in: path
+        required: true
+components:
+  schemas:
+    device-response:
+      title: Root Type for device-response
+      description: The root of the device-response type's schema.
+      type: object
+      properties:
+        devices:
+          type: array
+          items:
+            $ref: '#/components/schemas/device'
+      example:
+        devices:
+          - _id: 03b38411-d37b-4957-8d5b-641db7bde29a
+            SN: 00000000000000000000C575FA57A355
+            MAC: C5:75:FA:57:A3:55
+            info:
+              name: Test
+              GPSCoords:
+                latitude: 52.2190923
+                longitude: 21.0117357
+              location:
+                city: ''
+                country: ''
+                postal: ''
+                street: ''
+            meteringPoint:
+              meterID: PAF70691699
+            config:
+              multiplier: 10
+              usageKeys:
+                activeEnergy: F_8_0
+              idNumber: 70691699
+              idKey: 0
+              contract: {}
+            usageKey: F_8_0
+            lastReading:
+              date: 2018-06-25T13:00:00.000Z
+              OBIS:
+                F_8_0: 22750.83
+              updatedAt:
+                F_8_0: 2018-06-25T13:00:00.000Z
+            initialReading:
+              date: 2018-06-04T14:47:45.000Z
+              OBIS:
+                F_8_0: 22725.58
+            timezone:
+              name: Europe/Warsaw
+            owner:
+              name: John Doe
+              email: doe@email.com
+            hardware:
+              version: '4.5'
+            disabled: true
+            disabledAt: 2018-07-02T08:21:36.909Z
+            showSettingsReminder: false
+            tags:
+              - testing2
+            usage:
+              thisMonth: 25.210000000002765
+            meta:
+              F_8_0:
+                unit: kWh
+                category: energy
+    device:
+      title: Root Type for device
+      description: The root of the device type's schema.
+      type: object
+      properties:
+        _id:
+          description: UUID of the device
+          type: string
+        SN:
+          description: Serial number
+          type: string
+        MAC:
+          description: MAC address of the device
+          type: string
+        info:
+          $ref: '#/components/schemas/device-info'
+          properties:
+            name:
+              type: string
+            GPSCoords:
+              type: object
+              properties:
+                latitude:
+                  format: double
+                  type: number
+                longitude:
+                  format: double
+                  type: number
+            location:
+              type: object
+              properties:
+                city:
+                  type: string
+                country:
+                  type: string
+                postal:
+                  type: string
+                street:
+                  type: string
+        meteringPoint:
+          $ref: '#/components/schemas/device-meteringPoint'
+          description: ''
+          properties:
+            meterID:
+              type: string
+        config:
+          type: object
+          properties:
+            multiplier:
+              format: int32
+              type: integer
+            usageKeys:
+              type: object
+              properties:
+                activeEnergy:
+                  type: string
+            idNumber:
+              format: int32
+              type: integer
+            idKey:
+              type: string
+            contract:
+              type: object
+              properties:
+                distributionTariff:
+                  type: object
+                  properties:
+                    _id:
+                      type: string
+                    distributionNetworkOperator:
+                      type: string
+                    name:
+                      type: string
+                    prices:
+                      type: object
+                      properties:
+                        constantPriceComponent:
+                          format: double
+                          type: number
+                        qualityComponent:
+                          format: double
+                          type: number
+                        interimComponent:
+                          format: double
+                          type: number
+                        renewableEnergyCharge:
+                          format: int32
+                          type: integer
+                        standingCharge:
+                          format: double
+                          type: number
+                    reactiveEnergyFeeMultiplier:
+                      format: int32
+                      type: integer
+                    zones:
+                      type: array
+                      items: {}
+                contractedPowerLimit:
+                  format: int32
+                  type: integer
+        usageKey:
+          type: string
+        lastReading:
+          $ref: '#/components/schemas/device-lastReading-updatedAt'
+          properties:
+            date:
+              format: date-time
+              type: string
+            OBIS:
+              type: object
+              properties:
+                '0_0_0':
+                  format: int32
+                  type: integer
+                '0_2_2':
+                  type: string
+                '0_9_1':
+                  format: int32
+                  type: integer
+                '0_9_2':
+                  format: date-time
+                  type: string
+                F_8_0:
+                  format: double
+                  type: number
+                F_8_1:
+                  format: double
+                  type: number
+                F_8_2:
+                  format: int32
+                  type: integer
+                F_8_3:
+                  format: int32
+                  type: integer
+                F_8_4:
+                  format: int32
+                  type: integer
+                F_F_0:
+                  format: int32
+                  type: integer
+                S_1_1_5:
+                  format: double
+                  type: number
+                S_1_1_9:
+                  format: double
+                  type: number
+                S_1_1_4:
+                  format: date-time
+                  type: string
+                S_1_1_6:
+                  format: int32
+                  type: integer
+                S_1_1_7:
+                  type: array
+                  items: {}
+                S_1_1_8:
+                  type: array
+                  items: {}
+                S_1_1_2:
+                  format: double
+                  type: number
+                S_1_1_1:
+                  type: string
+            UUID:
+              type: string
+            meterID:
+              type: string
+            updatedAt:
+              type: object
+              properties:
+                S_1_1_5:
+                  format: date-time
+                  type: string
+                S_1_1_9:
+                  format: date-time
+                  type: string
+                F_8_0:
+                  format: date-time
+                  type: string
+                '0_9_1':
+                  format: date-time
+                  type: string
+                '0_9_2':
+                  format: date-time
+                  type: string
+                F_8_2:
+                  format: date-time
+                  type: string
+                F_8_4:
+                  format: date-time
+                  type: string
+                S_1_1_4:
+                  format: date-time
+                  type: string
+                S_1_1_6:
+                  format: date-time
+                  type: string
+                F_8_3:
+                  format: date-time
+                  type: string
+                F_F_0:
+                  format: date-time
+                  type: string
+                S_1_1_7:
+                  format: date-time
+                  type: string
+                S_1_1_8:
+                  format: date-time
+                  type: string
+                '0_0_0':
+                  format: date-time
+                  type: string
+                '0_2_2':
+                  format: date-time
+                  type: string
+                S_1_1_2:
+                  format: date-time
+                  type: string
+                F_8_1:
+                  format: date-time
+                  type: string
+                S_1_1_1:
+                  format: date-time
+                  type: string
+            BATTERY_VOLTAGE:
+              format: double
+              type: number
+            BATTERY_STATUS:
+              format: int32
+              type: integer
+            BATTERY_PC:
+              format: int32
+              type: integer
+        initialReading:
+          type: object
+          properties:
+            date:
+              format: date-time
+              type: string
+            OBIS:
+              type: object
+              properties:
+                '0_0_0':
+                  format: int32
+                  type: integer
+                '0_2_2':
+                  type: string
+                '0_9_1':
+                  format: int32
+                  type: integer
+                '0_9_2':
+                  format: date-time
+                  type: string
+                F_8_0:
+                  format: double
+                  type: number
+                F_8_1:
+                  format: double
+                  type: number
+                F_8_2:
+                  format: int32
+                  type: integer
+                F_8_3:
+                  format: int32
+                  type: integer
+                F_8_4:
+                  format: int32
+                  type: integer
+                F_F_0:
+                  format: int32
+                  type: integer
+        timezone:
+          $ref: '#/components/schemas/device-timezone'
+          properties:
+            name:
+              type: string
+        owner:
+          $ref: '#/components/schemas/device-owner'
+          properties:
+            name:
+              type: string
+            email:
+              type: string
+        communicationConfig:
+          type: object
+          properties:
+            timeREQToID:
+              format: double
+              type: number
+            timeACKToDATA:
+              format: double
+              type: number
+            timeTotal:
+              format: double
+              type: number
+            timeMinReadoutInterval:
+              format: int32
+              type: integer
+            baud:
+              format: int32
+              type: integer
+            lengthID:
+              format: int32
+              type: integer
+            lengthDATA:
+              format: int32
+              type: integer
+            ledTxPower:
+              format: int32
+              type: integer
+        hardware:
+          $ref: '#/components/schemas/device-hardware'
+          properties:
+            version:
+              type: string
+        stats:
+          type: object
+          properties:
+            succeededTotal:
+              format: int32
+              type: integer
+            failedTotal:
+              format: int32
+              type: integer
+            daysCompleted:
+              format: int32
+              type: integer
+            failedID:
+              format: int32
+              type: integer
+            failedDATA:
+              format: int32
+              type: integer
+            txPowerOnFail:
+              format: int32
+              type: integer
+            succeededSubcnt:
+              format: int32
+              type: integer
+            failedIDSubcnt:
+              format: int32
+              type: integer
+            failedDATASubcnt:
+              format: int32
+              type: integer
+            succeedOnDemand:
+              format: int32
+              type: integer
+            failedOnDemand:
+              format: int32
+              type: integer
+            hardwareReadouts:
+              format: int32
+              type: integer
+            softwareReadouts:
+              format: int32
+              type: integer
+        disabled:
+          type: boolean
+        disabledAt:
+          format: date-time
+          type: string
+        showSettingsReminder:
+          type: boolean
+        tags:
+          type: array
+          items:
+            type: string
+        usage:
+          type: object
+          properties:
+            thisMonth:
+              format: double
+              type: number
+            previousMonth:
+              type: object
+        meta:
+          type: object
+          properties:
+            '0_0_0':
+              type: object
+              properties:
+                unit:
+                  type: string
+                category:
+                  type: string
+            '0_2_2':
+              type: object
+              properties:
+                unit:
+                  type: string
+                category:
+                  type: string
+            '0_9_1':
+              type: object
+              properties:
+                unit:
+                  type: string
+                category:
+                  type: string
+            '0_9_2':
+              type: object
+              properties:
+                unit:
+                  type: string
+                category:
+                  type: string
+            F_8_0:
+              type: object
+              properties:
+                unit:
+                  type: string
+                category:
+                  type: string
+            F_8_1:
+              type: object
+              properties:
+                unit:
+                  type: string
+                category:
+                  type: string
+            F_8_2:
+              type: object
+              properties:
+                unit:
+                  type: string
+                category:
+                  type: string
+            F_8_3:
+              type: object
+              properties:
+                unit:
+                  type: string
+                category:
+                  type: string
+            F_8_4:
+              type: object
+              properties:
+                unit:
+                  type: string
+                category:
+                  type: string
+            F_F_0:
+              type: object
+              properties:
+                unit:
+                  type: string
+                category:
+                  type: string
+            S_1_1_5:
+              type: object
+              properties:
+                unit:
+                  type: string
+                category:
+                  type: string
+            S_1_1_9:
+              type: object
+              properties:
+                unit:
+                  type: string
+                category:
+                  type: string
+            S_1_1_4:
+              type: object
+              properties:
+                unit:
+                  type: string
+                category:
+                  type: string
+            S_1_1_6:
+              type: object
+              properties:
+                unit:
+                  type: string
+                category:
+                  type: string
+            S_1_1_7:
+              type: object
+              properties:
+                unit:
+                  type: string
+                category:
+                  type: string
+            S_1_1_8:
+              type: object
+              properties:
+                unit:
+                  type: string
+                category:
+                  type: string
+            S_1_1_2:
+              type: object
+              properties:
+                unit:
+                  type: string
+                category:
+                  type: string
+            S_1_1_1:
+              type: object
+              properties:
+                unit:
+                  type: string
+                category:
+                  type: string
+      example: |-
+        {
+              "_id": "03b38411-d37b-4957-8d5b-641db7bde29a",
+              "SN": "00000000000000000000C575FA57A355",
+              "MAC": "C5:75:FA:57:A3:55",
+              "info": {
+                "name": "Test",
+                "GPSCoords": {
+                  "latitude": 52.2190923,
+                  "longitude": 21.0117357
+                },
+                "location": {
+                  "city": "",
+                  "country": "",
+                  "postal": "",
+                  "street": ""
+                }
+              },
+              "meteringPoint": {
+                "meterID": "PAF70691699"
+              },
+              "config": {
+                "multiplier": 10,
+                "usageKeys": {
+                  "activeEnergy": "F_8_0"
+                },
+                "idNumber": 70691699,
+                "idKey": "0_0_0",
+                "contract": {}
+              },
+              "usageKey": "F_8_0",
+              "lastReading": {
+                "date": "2018-06-25T13:00:00.000Z",
+                "OBIS": {
+                  "F_8_0": 22750.83
+                },
+                "updatedAt": {
+                  "F_8_0": "2018-06-25T13:00:00.000Z"
+                }
+              },
+              "initialReading": {
+                "date": "2018-06-04T14:47:45.000Z",
+                "OBIS": {
+                  "F_8_0": 22725.58
+                }
+              },
+              "timezone": {
+                "name": "Europe/Warsaw"
+              },
+              "owner": {
+                "name": "John Doe",
+                "email": "doe@email.com"
+              },
+              "hardware": {
+                "version": "4.5"
+              },
+              "disabled": true,
+              "disabledAt": "2018-07-02T08:21:36.909Z",
+              "showSettingsReminder": false,
+              "tags": [
+                "testing2"
+              ],
+              "usage": {
+                "thisMonth": 25.210000000002765,
+                "previousMonth": null
+              },
+              "meta": {
+                "F_8_0": {
+                  "unit": "kWh",
+                  "category": "energy"
+                }
+              }
+            }
+    tariffs-response:
+      title: Root Type for tariffs
+      description: The root of the tariffs type's schema.
+      required:
+        - tariffs
+      type: object
+      properties:
+        tariffs:
+          type: array
+          items:
+            $ref: '#/components/schemas/tariff'
+      example: |-
+        {
+          "tariffs": [
+            {
+              "_id": "5a787c2758c216c78dd2b9a6",
+              "distributionNetworkOperator": "Enea",
+              "name": "A21",
+              "prices": {
+                "constantPriceComponent": 8.634,
+                "qualityComponent": 0.01253,
+                "interimComponent": 3.93,
+                "renewableEnergyCharge": 0,
+                "standingCharge": 19.5
+              },
+              "reactiveEnergyFeeMultiplier": 3,
+              "zones": [
+                {
+                  "name": "Cała doba",
+                  "variablePriceComponent": 0.01666,
+                  "periods": [
+                    {
+                      "inEffect": {
+                        "months": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+                        "weekdays": [1, 2, 3, 4, 5, 6, 7]
+                      },
+                      "bounds": [
+                        {
+                          "from": { "hour": 0, "minute": 0 },
+                          "to": { "hour": 24, "minute": 0 }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+    device-meteringPoint:
+      title: Root Type for meteringPoint
+      description: The root of the meteringPoint type's schema.
+      type: object
+      properties:
+        meterID:
+          type: string
+      example: |2-
+           {
+                  "meterID": "PAF70691699"
+                }
+    device-owner:
+      title: Root Type for device-owner
+      description: The root of the device-owner type's schema.
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+      example: |-
+        {
+            "name": "John Doe",
+            "email": "doe@doe.de"
+        }
+    tariff:
+      required:
+        - distributionNetworkOperator
+        - name
+        - prices
+        - reactiveEnergyFeeMultiplier
+        - zones
+      type: object
+      properties:
+        distributionNetworkOperator:
+          type: string
+        name:
+          type: string
+        prices:
+          $ref: '#/components/schemas/tariff-prices'
+        reactiveEnergyFeeMultiplier:
+          type: number
+        zones:
+          type: array
+          items:
+            $ref: '#/components/schemas/tariff-zone'
+    device-timezone:
+      title: Root Type for device-timezone
+      description: The root of the device-timezone type's schema.
+      type: object
+      properties:
+        name:
+          type: string
+      example: |-
+        {
+            "name": "Europe/Warsaw"
+        }
+    tariff-prices:
+      required:
+        - constantPriceComponent
+        - qualityComponent
+        - interimComponent
+        - renewableEnergyCharge
+      type: object
+      properties:
+        constantPriceComponent:
+          type: number
+        qualityComponent:
+          type: number
+        interimComponent:
+          type: number
+        renewableEnergyCharge:
+          type: number
+    device-lastReading:
+      title: Root Type for device-lastReading
+      description: The root of the device-lastReading type's schema.
+      type: object
+      properties:
+        date:
+          format: date-time
+          type: string
+        OBIS:
+          type: object
+          properties:
+            '0_0_0':
+              format: int32
+              type: integer
+            '0_2_2':
+              type: string
+            '0_9_1':
+              format: int32
+              type: integer
+            '0_9_2':
+              format: date-time
+              type: string
+            '15_8_0':
+              format: double
+              type: number
+            '15_8_1':
+              format: double
+              type: number
+            '15_8_2':
+              format: int32
+              type: integer
+            '15_8_3':
+              format: int32
+              type: integer
+            '15_8_4':
+              format: int32
+              type: integer
+            F_F_0:
+              format: int32
+              type: integer
+            '15_6_0':
+              format: double
+              type: number
+            '15_7_0':
+              format: double
+              type: number
+            S_1_1_2:
+              format: double
+              type: number
+            S_1_1_4:
+              format: date-time
+              type: string
+            S_1_1_6:
+              format: int32
+              type: integer
+            S_1_1_7:
+              type: array
+              items: {}
+            S_1_1_8:
+              type: array
+              items: {}
+            S_1_1_9:
+              format: int32
+              type: integer
+            S_1_1_1:
+              type: string
+        updatedAt:
+          type: object
+          properties:
+            '15_8_0':
+              format: date-time
+              type: string
+            '15_8_1':
+              format: date-time
+              type: string
+            S_1_1_2:
+              format: date-time
+              type: string
+            S_1_1_4:
+              format: date-time
+              type: string
+            S_1_1_6:
+              format: date-time
+              type: string
+            S_1_1_7:
+              format: date-time
+              type: string
+            S_1_1_8:
+              format: date-time
+              type: string
+            S_1_1_9:
+              format: date-time
+              type: string
+            LAST_READOUT_INCORRECT:
+              format: date-time
+              type: string
+            '0_0_0':
+              format: date-time
+              type: string
+            '0_2_2':
+              format: date-time
+              type: string
+            '0_9_1':
+              format: date-time
+              type: string
+            '0_9_2':
+              format: date-time
+              type: string
+            '15_6_0':
+              format: date-time
+              type: string
+            '15_7_0':
+              format: date-time
+              type: string
+            S_1_1_1:
+              format: date-time
+              type: string
+        flags:
+          description: Array of flags that ever occurred
+          type: array
+          items:
+            type: string
+      example: |-
+        {
+                "date": "2019-02-19T15:15:00.000Z",
+                "OBIS": {
+                  "0_0_0": 60174509,
+                  "0_2_2": "G11",
+                  "0_9_1": 58356,
+                  "0_9_2": "2019-02-19T00:00:00.000Z",
+                  "15_8_0": 197.18,
+                  "15_8_1": 197.18,
+                  "15_8_2": 0,
+                  "15_8_3": 0,
+                  "15_8_4": 0,
+                  "F_F_0": 0,
+                  "15_6_0": 0.02,
+                  "15_7_0": 0.02,
+                  "S_1_1_2": 2.9469,
+                  "S_1_1_4": "2019-02-19T15:15:00.000Z",
+                  "S_1_1_6": 5,
+                  "S_1_1_7": [
+                    9,
+                    0
+                  ],
+                  "S_1_1_8": [
+                    3,
+                    9600
+                  ],
+                  "S_1_1_9": 28,
+                  "S_1_1_1": "PAF"
+                },
+                "updatedAt": {
+                  "15_8_0": "2019-02-19T15:15:00.000Z",
+                  "15_8_1": "2019-02-19T15:15:00.000Z",
+                  "S_1_1_2": "2019-02-19T15:15:00.000Z",
+                  "S_1_1_4": "2019-02-19T15:15:00.000Z",
+                  "S_1_1_6": "2019-02-19T15:15:00.000Z",
+                  "S_1_1_7": "2019-02-19T15:15:00.000Z",
+                  "S_1_1_8": "2019-02-19T15:15:00.000Z",
+                  "S_1_1_9": "2019-02-19T15:15:00.000Z",
+                  "LAST_READOUT_INCORRECT": "2019-02-19T15:00:00.000Z",
+                  "0_0_0": "2019-02-19T15:15:00.000Z",
+                  "0_2_2": "2019-02-19T15:15:00.000Z",
+                  "0_9_1": "2019-02-19T15:15:00.000Z",
+                  "0_9_2": "2019-02-19T15:15:00.000Z",
+                  "15_6_0": "2019-02-19T15:15:00.000Z",
+                  "15_7_0": "2019-02-19T15:15:00.000Z",
+                  "S_1_1_1": "2019-02-19T15:15:00.000Z"
+                },
+                "flags": [
+                  "LAST_READOUT_INCORRECT"
+                ]
+              }
+    device-lastReading-updatedAt:
+      title: Root Type for device-lastReading-updatedAt
+      description: 'OBIS keys as keys, datetime as value'
+      type: object
+      properties:
+        '15_8_0':
+          format: date-time
+          type: string
+        '15_8_1':
+          format: date-time
+          type: string
+        S_1_1_2:
+          format: date-time
+          type: string
+        S_1_1_4:
+          format: date-time
+          type: string
+        S_1_1_6:
+          format: date-time
+          type: string
+        S_1_1_7:
+          format: date-time
+          type: string
+        S_1_1_8:
+          format: date-time
+          type: string
+        S_1_1_9:
+          format: date-time
+          type: string
+        LAST_READOUT_INCORRECT:
+          format: date-time
+          type: string
+        '0_0_0':
+          format: date-time
+          type: string
+        '0_2_2':
+          format: date-time
+          type: string
+        '0_9_1':
+          format: date-time
+          type: string
+        '0_9_2':
+          format: date-time
+          type: string
+        '15_6_0':
+          format: date-time
+          type: string
+        '15_7_0':
+          format: date-time
+          type: string
+        S_1_1_1:
+          format: date-time
+          type: string
+      example: |-
+        {
+            "15_8_0": "2019-02-19T15:15:00.000Z",
+            "15_8_1": "2019-02-19T15:15:00.000Z",
+            "S_1_1_2": "2019-02-19T15:15:00.000Z",
+            "S_1_1_4": "2019-02-19T15:15:00.000Z",
+            "S_1_1_6": "2019-02-19T15:15:00.000Z",
+            "S_1_1_7": "2019-02-19T15:15:00.000Z",
+            "S_1_1_8": "2019-02-19T15:15:00.000Z",
+            "S_1_1_9": "2019-02-19T15:15:00.000Z",
+            "LAST_READOUT_INCORRECT": "2019-02-19T15:00:00.000Z",
+            "0_0_0": "2019-02-19T15:15:00.000Z",
+            "0_2_2": "2019-02-19T15:15:00.000Z",
+            "0_9_1": "2019-02-19T15:15:00.000Z",
+            "0_9_2": "2019-02-19T15:15:00.000Z",
+            "15_6_0": "2019-02-19T15:15:00.000Z",
+            "15_7_0": "2019-02-19T15:15:00.000Z",
+            "S_1_1_1": "2019-02-19T15:15:00.000Z"
+        }
+    tariff-period:
+      required:
+        - inEffect
+        - bounds
+      type: object
+      properties:
+        inEffect:
+          $ref: '#/components/schemas/tariff-inEffect'
+        bounds:
+          type: array
+          items:
+            $ref: '#/components/schemas/tariff-bounds'
+    device-info-gpscoords:
+      title: Root Type for device-info-gpscoords
+      description: The root of the device-info-gpscoords type's schema.
+      type: object
+      properties:
+        latitude:
+          format: double
+          type: number
+        longitude:
+          format: double
+          type: number
+      example: |-
+        {
+            "latitude": 52.2190307,
+            "longitude": 21.0118119
+        }
+    device-info-location:
+      title: Root Type for device-info-location
+      description: The root of the device-info-location type's schema.
+      type: object
+      properties:
+        country:
+          type: string
+        city:
+          type: string
+        postal:
+          type: string
+        street:
+          type: string
+      example: |-
+        {
+            "city" : "Warszawa",
+            "country" : "Polska",
+            "street" : " Nowowiejska 15/19",
+            "postal" : "00-665"
+        }
+    tariff-inEffect:
+      required:
+        - months
+        - weekdays
+      type: object
+      properties:
+        months:
+          type: array
+          items:
+            type: number
+        weekdays:
+          type: array
+          items:
+            type: number
+    device-info:
+      title: Root Type for devices-info
+      description: The root of the devices-info type's schema.
+      type: object
+      properties:
+        name:
+          description: device name
+          type: string
+        GPSCoords:
+          $ref: '#/components/schemas/device-info-gpscoords'
+          properties:
+            latitude:
+              format: double
+              type: number
+            longitude:
+              format: double
+              type: number
+        location:
+          $ref: '#/components/schemas/device-info-location'
+          properties:
+            country:
+              type: object
+            city:
+              type: object
+            postal:
+              type: object
+            street:
+              type: object
+      example: |-
+        {
+            "name": "Test",
+            "GPSCoords": {
+                "latitude": 52.2190307,
+                "longitude": 21.0118119
+            },
+            "location": {
+                "country": null,
+                "city": null,
+                "postal": null,
+                "street": null
+            }
+        }
+    device-hardware:
+      title: Root Type for device-hardware
+      description: The root of the device-hardware type's schema.
+      type: object
+      properties:
+        version:
+          type: string
+      example: |-
+        {
+            "version": "4.5"
+        }
+    tariff-zone:
+      required:
+        - name
+        - variablePriceComponent
+        - periods
+      type: object
+      properties:
+        name:
+          type: string
+        variablePriceComponent:
+          type: number
+        periods:
+          $ref: '#/components/schemas/tariff-period'
+    tariff-bounds:
+      required:
+        - from
+        - to
+      type: object
+      properties:
+        from:
+          $ref: '#/components/schemas/tariff-bound'
+        to:
+          $ref: '#/components/schemas/tariff-bound'
+    tariff-bound:
+      required:
+        - hour
+        - minute
+      type: object
+      properties:
+        hour:
+          type: number
+        minute:
+          type: number
+    tariffs-operators:
+      title: Root Type for tariffs-operators
+      description: The root of the tariffs-operators type's schema.
+      type: object
+      properties:
+        operators:
+          type: array
+          items: {}
+      example: |-
+        {
+            "operators": [
+                "Enea",
+                "E.ON",
+                "PGE",
+                "Energa",
+                "Tauron"
+            ]
+        }
+    tags-response:
+      title: Root Type for tags-response
+      description: The root of the tags-response type's schema.
+      type: object
+      properties:
+        status:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+      example: |-
+        {
+          "status": "ok",
+          "tags": [
+            "tag1",
+            "tag2"
+          ]
+        }
+    reading:
+      title: Root Type for device-reading
+      description: Device reading entity
+      required:
+        - obis-name
+        - date
+      type: object
+      properties:
+        date:
+          format: date-time
+          type: string
+        obis-name:
+          type: number
+      example: |-
+        {
+            "1_8_0": 22738.78,
+            "date": "2018-06-15T00:00:00.000Z"
+        }
+    readings-meta:
+      title: Root Type for reading-meta
+      description: Meta information about readings
+      required:
+        - range
+        - count
+        - keys
+        - OBIS
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            type: string
+        range:
+          $ref: '#/components/schemas/range'
+          properties:
+            from:
+              format: date-time
+              type: string
+            to:
+              format: date-time
+              type: string
+        OBIS:
+          $ref: '#/components/schemas/obis-name'
+          properties:
+            F_8_0:
+              type: object
+              properties:
+                key:
+                  type: string
+                constant:
+                  type: boolean
+                category:
+                  type: string
+                subcategory:
+                  type: string
+                unit:
+                  type: string
+                description:
+                  type: object
+                  properties:
+                    short:
+                      type: string
+                    long:
+                      type: string
+        count:
+          type: number
+      example: |-
+        {
+            "keys": [
+                "F_8_0"
+            ],
+            "range": {
+                "from": "2018-06-15T00:00:00.000Z",
+                "to": "2018-06-16T00:00:00.000Z"
+            },
+            "OBIS": {
+                "F_8_0": {
+                    "key": "ABSOLUTE_ACTIVE_ENERGY_TOTAL",
+                    "constant": false,
+                    "category": "energy",
+                    "subcategory": "active",
+                    "unit": "kWh",
+                    "description": {
+                        "short": "Energy |A| (total)",
+                        "long": "Absolute active energy |A| (total)"
+                    }
+                }
+            },
+            "count": 1910
+        }
+    range:
+      title: Root Type for range
+      description: The root of the range type's schema.
+      required:
+        - from
+        - to
+      type: object
+      properties:
+        from:
+          format: date-time
+          type: string
+        to:
+          format: date-time
+          type: string
+      example: |-
+        {
+            "from": "2018-06-15T00:00:00.000Z",
+            "to": "2018-06-16T00:00:00.000Z"
+        }
+    obis-description:
+      title: Root Type for obis-description
+      description: The root of the obis-description type's schema.
+      type: object
+      properties:
+        short:
+          type: string
+        long:
+          type: string
+      example: |-
+        {
+            "short": "Energy |A| (total)",
+            "long": "Absolute active energy |A| (total)"
+        }
+    obis-name:
+      title: Root Type for obis-name
+      description: The root of the obis-name type's schema.
+      required:
+        - obis-name
+      type: object
+      properties:
+        obis-name:
+          $ref: '#/components/schemas/obis-meta'
+      example: |-
+        {
+            "F_8_0": {
+                "key": "ABSOLUTE_ACTIVE_ENERGY_TOTAL",
+                "constant": false,
+                "category": "energy",
+                "subcategory": "active",
+                "unit": "kWh",
+                "description": {
+                    "short": "Energy |A| (total)",
+                    "long": "Absolute active energy |A| (total)"
+                }
+            }
+        }
+    obis-meta:
+      title: Root Type for obis-code
+      description: The root of the obis-code type's schema.
+      required:
+        - description
+        - category
+        - constant
+        - key
+        - subcategory
+        - unit
+      type: object
+      properties:
+        key:
+          type: string
+        constant:
+          type: boolean
+        category:
+          type: string
+        subcategory:
+          type: string
+        unit:
+          type: string
+        description:
+          $ref: '#/components/schemas/obis-description'
+          properties:
+            short:
+              type: string
+            long:
+              type: string
+      example: |-
+        {
+            "key": "ABSOLUTE_ACTIVE_ENERGY_TOTAL",
+            "constant": false,
+            "category": "energy",
+            "subcategory": "active",
+            "unit": "kWh",
+            "description": {
+                "short": "Energy |A| (total)",
+                "long": "Absolute active energy |A| (total)"
+            }
+        }
+    readings-response:
+      title: Root Type for readings-response
+      description: The root of the readings-response type's schema.
+      required:
+        - meta
+        - readings
+      type: object
+      properties:
+        readings:
+          type: array
+          items:
+            $ref: '#/components/schemas/reading'
+        meta:
+          $ref: '#/components/schemas/readings-meta'
+          properties:
+            keys:
+              type: array
+              items: {}
+            range:
+              type: object
+              properties:
+                from:
+                  format: date-time
+                  type: string
+                to:
+                  format: date-time
+                  type: string
+            OBIS:
+              type: object
+              properties:
+                F_8_0:
+                  type: object
+                  properties:
+                    key:
+                      type: string
+                    constant:
+                      type: boolean
+                    category:
+                      type: string
+                    subcategory:
+                      type: string
+                    unit:
+                      type: string
+                    description:
+                      type: object
+                      properties:
+                        short:
+                          type: string
+                        long:
+                          type: string
+            count:
+              format: int32
+              type: integer
+      example:
+        readings:
+          - F_8_0: 22738.78
+            date: 2018-06-15T00:00:00.000Z
+          - F_8_0: 22740.16
+            date: 2018-06-16T00:00:00.000Z
+        meta:
+          keys:
+            - F_8_0
+          range:
+            from: 2018-06-15T00:00:00.000Z
+            to: 2018-06-16T00:00:00.000Z
+          OBIS:
+            F_8_0:
+              key: ABSOLUTE_ACTIVE_ENERGY_TOTAL
+              constant: false
+              category: energy
+              subcategory: active
+              unit: kWh
+              description:
+                short: Energy |A| (total)
+                long: Absolute active energy |A| (total)
+          count: 1910
+    usageProfile-response:
+      title: Root Type for usageProfile-response
+      description: usageProfile-response
+      required:
+        - meta
+        - type
+        - UUID
+        - _id
+        - createdAt
+        - data
+      type: object
+      properties:
+        _id:
+          description: Mongo database document id
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/usageProfile-data'
+        UUID:
+          description: Choosen device UUID
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+        meta:
+          $ref: '#/components/schemas/usageProfile-meta'
+          properties:
+            keys:
+              type: array
+              items: {}
+            OBIS:
+              type: object
+              properties:
+                F_8_0:
+                  type: object
+                  properties:
+                    key:
+                      type: string
+                    constant:
+                      type: boolean
+                    category:
+                      type: string
+                    subcategory:
+                      type: string
+                    unit:
+                      type: string
+                    description:
+                      type: object
+                      properties:
+                        short:
+                          type: string
+                        long:
+                          type: string
+        type:
+          description: Profile type
+          enum:
+            - allDayTraces
+            - dailyUsageInTariffs
+            - dayFine
+            - dayWeekend
+            - dayWorking
+            - loadDuration
+            - powerOverspends
+            - tariffOverallSummary
+            - weekCoarse
+            - weekFine
+      example: |-
+        {
+            "_id": "<mongodb-id>",
+            "data": [
+                {
+                    "1_8_0": 118.45172413798242,
+                    "time": {
+                        "hour": 0
+                    }
+                },
+                {
+                    "1_8_0": 99.30882352932959,
+                    "time": {
+                        "hour": 1
+                    }
+                },
+                {
+                    "1_8_0": 97.72058823529412,
+                    "time": {
+                        "hour": 23
+                    }
+                }
+            ],
+            "UUID": "03b38411-d37b-4957-8d5b-641db7bde29a",
+            "createdAt": "2018-06-10T13:31:28.123Z",
+            "type": "dayWeekend",
+            "meta": {
+                "keys": [
+                    "1_8_0"
+                ],
+                "OBIS": {
+                    "1_8_0": {
+                        "key": "POSITIVE_ACTIVE_ENERGY_TOTAL",
+                        "constant": false,
+                        "category": "energy",
+                        "subcategory": "active",
+                        "unit": "kWh",
+                        "description": {
+                            "short": "Energy A+ (total)",
+                            "long": "Positive active energy A+ (total)"
+                        }
+                    }
+                }
+            }
+        }
+    usageProfile-meta:
+      title: Root Type for usageProfile-meta
+      description: The root of the usageProfile-meta type's schema.
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            type: string
+        OBIS:
+          $ref: '#/components/schemas/obis-name'
+          properties:
+            '1_8_0':
+              type: object
+              properties:
+                key:
+                  type: string
+                constant:
+                  type: boolean
+                category:
+                  type: string
+                subcategory:
+                  type: string
+                unit:
+                  type: string
+                description:
+                  type: object
+                  properties:
+                    short:
+                      type: string
+                    long:
+                      type: string
+      example: |-
+        {
+            "keys": [
+                "1_8_0"
+            ],
+            "OBIS": {
+                "1_8_0": {
+                    "key": "POSITIVE_ACTIVE_ENERGY_TOTAL",
+                    "constant": false,
+                    "category": "energy",
+                    "subcategory": "active",
+                    "unit": "kWh",
+                    "description": {
+                        "short": "Energy A+ (total)",
+                        "long": "Positive active energy A+ (total)"
+                    }
+                }
+            }
+        }
+    usageProfile-data:
+      title: Root Type for usageProfile-data
+      description: The root of the usageProfile-data type's schema.
+      required:
+        - obis
+        - time
+      type: object
+      properties:
+        time:
+          $ref: '#/components/schemas/usageProfile-hour'
+          properties:
+            hour:
+              format: int32
+              type: integer
+        obis:
+          type: number
+      example: |-
+        {
+            "1_8_0": 5.86,
+            "time": {
+                "hour": 78
+            }
+        }
+    usageProfile-hour:
+      title: Root Type for usageProfile-hour
+      description: The root of the usageProfile-hour type's schema.
+      type: object
+      properties:
+        hour:
+          type: integer
+      example: |-
+        {
+            "hour": 1
+        }
+    summary-response:
+      title: Root Type for summary-response
+      description: The root of the summary-response type's schema.
+      required:
+        - range
+        - meta
+        - usage
+        - profile
+        - contract
+      type: object
+      properties:
+        range:
+          $ref: '#/components/schemas/range'
+          properties:
+            from:
+              format: date-time
+              type: string
+            to:
+              format: date-time
+              type: string
+        profile:
+          $ref: '#/components/schemas/summary-profile'
+          properties:
+            activeEnergy:
+              type: object
+              properties:
+                data:
+                  type: array
+                  items: {}
+                UUID:
+                  type: string
+                createdAt:
+                  format: date-time
+                  type: string
+                type:
+                  type: string
+        usage:
+          $ref: '#/components/schemas/summary-usage'
+          properties:
+            activeEnergy:
+              format: double
+              type: number
+        prices:
+          $ref: '#/components/schemas/summary-prices'
+          properties:
+            distribution:
+              type: object
+              properties:
+                constantComponent:
+                  format: double
+                  type: number
+                interimComponent:
+                  format: double
+                  type: number
+                standingCharge:
+                  format: double
+                  type: number
+                usageComponents:
+                  type: array
+                  items: {}
+                total:
+                  format: double
+                  type: number
+            retail:
+              type: object
+              properties:
+                constantComponent:
+                  format: double
+                  type: number
+                usageComponents:
+                  type: array
+                  items: {}
+                total:
+                  format: double
+                  type: number
+        contract:
+          type: string
+        meta:
+          $ref: '#/components/schemas/summary-meta'
+          properties:
+            activeEnergyCode:
+              type: string
+        contractedPowerOverspends:
+          $ref: '#/components/schemas/summary-contractedPower'
+      example: "{  \n   \"range\":{  \n      \"from\":\"2019-02-28T23:00:00.000Z\"\
+        ,\n      \"to\":\"2019-03-01T09:00:00.000Z\"\n   },\n   \"profile\":{  \n\
+        \      \"activeEnergy\":{  \n         \"data\":[  \n            {  \n    \
+        \           \"usage\":2.9500000000007276,\n               \"tariff\":\"Cał\
+        a doba\"\n            }\n         ],\n         \"UUID\":\"0e65e881-26e0-4206-b716-767998cd8b01\"\
+        ,\n         \"createdAt\":\"2019-03-01T09:12:32.758Z\",\n         \"type\"\
+        :\"tariffOverallSummary\"\n      }\n   },\n   \"usage\": {\n       \"activeEnergy\"\
+        : 4399790.460000001,\n       \"reactiveEnergy\": 1698827.72\n   },\n   \"\
+        prices\":{  \n      \"distribution\":{  \n         \"constantComponent\":9.29,\n\
+        \         \"interimComponent\":1.9,\n         \"standingCharge\":2.24,\n \
+        \        \"usageComponents\":[  \n            {  \n               \"zone\"\
+        :\"Cała doba\",\n               \"qualityComponent\":0.03746500000000924,\n\
+        \               \"variableComponent\":0.39795500000009815\n            }\n\
+        \         ],\n         \"total\":13.865420000000107\n      },\n      \"retail\"\
+        :{  \n         \"constantComponent\":5.28,\n         \"usageComponents\":[\
+        \  \n            {  \n               \"zone\":\"Cała doba\",\n           \
+        \    \"price\":1.0021150000002472\n            }\n         ],\n         \"\
+        total\":6.282115000000248\n      }\n   },\n   \"contract\":\"G11-3f\",\n \
+        \  \"contractedPowerOverspends\": {\n    \"data\": [],\n    \"UUID\": \"03b38411-d37b-4957-8d5b-641db7bde29a\"\
+        ,\n    \"createdAt\": \"2018-07-17T13:07:45.625Z\",\n    \"type\": \"powerOverspends\"\
+        \n  },\n   \"meta\":{  \n      \"activeEnergyCode\":\"15_8_0\"\n   }\n}"
+    summary-meta:
+      title: Root Type for summary-meta
+      description: The root of the summary-meta type's schema.
+      type: object
+      properties:
+        activeEnergyCode:
+          type: string
+      example: |-
+        {
+            "activeEnergyCode": "F_8_0"
+        }
+    summary-contractedPower:
+      title: Root Type for summary-contractedPower
+      description: The root of the summary-contractedPower type's schema.
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/summary-contractedPower-data'
+        UUID:
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+        type:
+          type: string
+      example: "{  \n   \"data\":[  \n      {  \n         \"date\":\"2018-04-09T13:45:00.000Z\"\
+        ,\n         \"value\":2442.719999998808,\n         \"overspendValue\":942.7199999988079\n\
+        \      }\n   ],\n   \"UUID\":\"03b38411-d37b-4957-8d5b-641db7bde29a\",\n \
+        \  \"createdAt\":\"2018-07-17T13:07:45.625Z\",\n   \"type\":\"powerOverspends\"\
+        \n}"
+    summary-contractedPower-data:
+      title: Root Type for summary-contractedPower-data
+      description: The root of the summary-contractedPower-data type's schema.
+      type: object
+      properties:
+        date:
+          format: date-time
+          type: string
+        value:
+          type: number
+        overspendValue:
+          type: number
+      example: |-
+        {
+            "date": "2018-04-09T13:45:00.000Z",
+            "value": 2442.719999998808,
+            "overspendValue": 942.7199999988079
+        }
+    summary-usage:
+      title: Root Type for summary-usage
+      description: The root of the summary-usage type's schema.
+      type: object
+      properties:
+        activeEnergy:
+          type: number
+        reactiveEnergy:
+          type: number
+      example: |-
+        {
+            "activeEnergy": 4399790.460000001,
+            "reactiveEnergy": 1698827.72
+        }
+    summary-prices:
+      title: Root Type for summary-prices
+      description: The root of the summary-prices type's schema.
+      required:
+        - distribution
+        - retail
+      type: object
+      properties:
+        distribution:
+          $ref: '#/components/schemas/summary-prices-distribution'
+        retail:
+          $ref: '#/components/schemas/summary-prices-retail'
+      example: "{  \n   \"distribution\":{  \n      \"constantComponent\":9.29,\n\
+        \      \"interimComponent\":1.9,\n      \"standingCharge\":2.24,\n      \"\
+        usageComponents\":[  \n         {  \n            \"zone\":\"Cała doba\",\n\
+        \            \"qualityComponent\":0.03746500000000924,\n            \"variableComponent\"\
+        :0.39795500000009815\n         }\n      ],\n      \"total\":13.865420000000107\n\
+        \   },\n   \"retail\":{  \n      \"constantComponent\":5.28,\n      \"usageComponents\"\
+        :[  \n         {  \n            \"zone\":\"Cała doba\",\n            \"price\"\
+        :1.0021150000002472\n         }\n      ],\n      \"total\":6.282115000000248\n\
+        \   }\n}"
+    summary-prices-retail:
+      title: Root Type for summary-prices-retail
+      description: The root of the summary-prices-retail type's schema.
+      type: object
+      properties:
+        constantComponent:
+          type: number
+        usageComponents:
+          type: array
+          items:
+            $ref: '#/components/schemas/summary-zone-price'
+        total:
+          type: number
+      example: |-
+        {
+            "constantComponent": 5.28,
+            "usageComponents": [
+                {
+                    "zone": "Cała doba",
+                    "price": 1.0021150000002472
+                }
+            ],
+            "total": 6.282115000000248
+        }
+    summary-zone-price:
+      title: Root Type for summary-zone-price
+      description: The root of the summary-zone-price type's schema.
+      type: object
+      properties:
+        zone:
+          type: string
+        price:
+          type: number
+      example: |-
+        {
+            "zone": "Cała doba",
+            "price": 1.0021150000002472
+        }
+    summary-prices-distribution:
+      title: Root Type for summary-prices-distribution
+      description: The root of the summary-prices-distribution type's schema.
+      type: object
+      properties:
+        constantComponent:
+          format: double
+          type: number
+        interimComponent:
+          format: double
+          type: number
+        standingCharge:
+          format: double
+          type: number
+        usageComponents:
+          type: array
+          items:
+            $ref: '#/components/schemas/summary-prices-distribution-usageComponent'
+        total:
+          format: double
+          type: number
+      example: |-
+        {
+            "constantComponent": 9.29,
+            "interimComponent": 1.9,
+            "standingCharge": 2.24,
+            "usageComponents": [
+                {
+                    "zone": "Cała doba",
+                    "qualityComponent": 0.03746500000000924,
+                    "variableComponent": 0.39795500000009815
+                }
+            ],
+            "total": 13.865420000000107
+        }
+    summary-prices-distribution-usageComponent:
+      title: Root Type for summary-prices-distribution-usageComponent
+      description: The root of the summary-prices-distribution-usageComponent type's
+        schema.
+      type: object
+      properties:
+        zone:
+          type: string
+        qualityComponent:
+          format: double
+          type: number
+        variableComponent:
+          format: double
+          type: number
+      example: |-
+        {
+            "zone": "Cała doba",
+            "qualityComponent": 0.03746500000000924,
+            "variableComponent": 0.39795500000009815
+        }
+    summary-profile:
+      title: Root Type for summary-profile
+      description: The root of the summary-profile type's schema.
+      type: object
+      properties:
+        activeEnergy:
+          $ref: '#/components/schemas/summary-energy-entity'
+          properties:
+            data:
+              type: array
+              items: {}
+            UUID:
+              type: string
+            createdAt:
+              format: date-time
+              type: string
+            type:
+              type: string
+        tangensPhi:
+          $ref: '#/components/schemas/summary-tangens'
+          properties:
+            data:
+              type: array
+              items: {}
+        reactiveInductiveEnergy:
+          $ref: '#/components/schemas/summary-energy-entity'
+          properties:
+            data:
+              type: array
+              items: {}
+            UUID:
+              type: string
+            createdAt:
+              format: date-time
+              type: string
+            type:
+              type: string
+      example: "{  \n   \"activeEnergy\":{  \n      \"data\":[  \n         {  \n \
+        \           \"usage\":115251.79999999562,\n            \"tariff\":\"Pozostał\
+        e godziny doby\"\n         },\n         {  \n            \"usage\":579627.9000000036,\n\
+        \            \"tariff\":\"Szczyt popołudniowy\"\n         },\n         { \
+        \ \n            \"usage\":2570448.699999993,\n            \"tariff\":\"Pozostał\
+        e godziny doby\"\n         },\n         {  \n            \"usage\":1134462.0600000084,\n\
+        \            \"tariff\":\"Szczyt przedpołudniowy\"\n         }\n      ],\n\
+        \      \"UUID\":\"9dc984ce-b40e-4e02-979f-0e302446ff9d\",\n      \"createdAt\"\
+        :\"2019-03-01T09:36:50.771Z\",\n      \"type\":\"tariffOverallSummary\"\n\
+        \   },\n   \"tangensPhi\":{  \n      \"data\":[  \n         {  \n        \
+        \    \"tariff\":\"Pozostałe godziny doby\",\n            \"usage\":0.38674710503437754\n\
+        \         },\n         {  \n            \"tariff\":\"Szczyt popołudniowy\"\
+        ,\n            \"usage\":0.38494834358387325\n         },\n         {  \n\
+        \            \"tariff\":\"Pozostałe godziny doby\",\n            \"usage\"\
+        :0.3851945771179966\n         },\n         {  \n            \"tariff\":\"\
+        Szczyt przedpołudniowy\",\n            \"usage\":0.38873465719955025\n   \
+        \      }\n      ]\n   },\n   \"reactiveInductiveEnergy\":{  \n      \"data\"\
+        :[  \n         {  \n            \"usage\":44573.29999999938,\n           \
+        \ \"tariff\":\"Pozostałe godziny doby\"\n         },\n         {  \n     \
+        \       \"usage\":223126.80000000034,\n            \"tariff\":\"Szczyt popoł\
+        udniowy\"\n         },\n         {  \n            \"usage\":990122.9000000014,\n\
+        \            \"tariff\":\"Pozostałe godziny doby\"\n         },\n        \
+        \ {  \n            \"usage\":441004.71999999887,\n            \"tariff\":\"\
+        Szczyt przedpołudniowy\"\n         }\n      ],\n      \"UUID\":\"9dc984ce-b40e-4e02-979f-0e302446ff9d\"\
+        ,\n      \"createdAt\":\"2019-03-01T09:36:52.388Z\",\n      \"type\":\"tariffOverallSummary\"\
+        \n   }\n}"
+    summary-profile-data:
+      title: Root Type for summary-profile-data
+      description: The root of the summary-profile-data type's schema.
+      type: object
+      properties:
+        usage:
+          format: double
+          type: number
+        tariff:
+          type: string
+      example: |-
+        {
+            "usage": 579627.9000000036,
+            "tariff": "Szczyt popołudniowy"
+        }
+    summary-energy-entity:
+      title: Root Type for summary-energy-entity
+      description: The root of the summary-energy-entity type's schema.
+      required: []
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/summary-profile-data'
+        UUID:
+          type: string
+        createdAt:
+          format: date-time
+          type: string
+        type:
+          type: string
+      example: |-
+        {
+            "data": [
+                {
+                    "usage": 115251.79999999562,
+                    "tariff": "Pozostałe godziny doby"
+                },
+                {
+                    "usage": 579627.9000000036,
+                    "tariff": "Szczyt popołudniowy"
+                },
+                {
+                    "usage": 2570448.699999993,
+                    "tariff": "Pozostałe godziny doby"
+                },
+                {
+                    "usage": 1134462.0600000084,
+                    "tariff": "Szczyt przedpołudniowy"
+                }
+            ],
+            "UUID": "9dc984ce-b40e-4e02-979f-0e302446ff9d",
+            "createdAt": "2019-03-01T09:36:50.771Z",
+            "type": "tariffOverallSummary"
+        }
+    summary-tangens:
+      title: Root Type for summary-tangens
+      description: The root of the summary-tangens type's schema.
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/summary-profile-data'
+      example: |-
+        {
+            "data": [
+                {
+                    "tariff": "Pozostałe godziny doby",
+                    "usage": 0.38674710503437754
+                },
+                {
+                    "tariff": "Szczyt popołudniowy",
+                    "usage": 0.38494834358387325
+                },
+                {
+                    "tariff": "Pozostałe godziny doby",
+                    "usage": 0.3851945771179966
+                },
+                {
+                    "tariff": "Szczyt przedpołudniowy",
+                    "usage": 0.38873465719955025
+                }
+            ]
+        }
+    error-response:
+      title: Root Type for tariff-error-response
+      description: The root of the error-response type's schema.
+      required:
+        - status
+      type: object
+      properties:
+        status:
+          enum:
+            - error
+            - ok
+          type: string
+        error:
+          description: Error name
+          type: string
+        message:
+          description: Error message
+          type: string
+        statusCode:
+          description: HTTP status code
+          type: integer
+      example:
+        status: error
+        error: Unauthorized
+        message: Authorization failed
+        statusCode: 401
+  securitySchemes:
+    API-Key:
+      type: apiKey
+      name: Authorization
+      in: header
+security:
+  - API-Key: []
