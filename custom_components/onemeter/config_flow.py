@@ -6,14 +6,21 @@ from typing import Any, Dict, Optional, List
 
 import voluptuous as vol
 
-from homeassistant import config_entries
+from homeassistant import config_entries, core
 from homeassistant.const import CONF_API_KEY, CONF_NAME, CONF_DEVICE_ID
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 import homeassistant.helpers.config_validation as cv
 
 from .api import OneMeterApiClient
-from .const import DOMAIN, DEFAULT_NAME
+from .const import (
+    CONF_REFRESH_INTERVAL,
+    DEFAULT_REFRESH_INTERVAL, 
+    DOMAIN,
+    REFRESH_INTERVAL_1,
+    REFRESH_INTERVAL_5,
+    REFRESH_INTERVAL_15,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -132,6 +139,9 @@ class OneMeterConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_API_KEY: self.api_key,
                         CONF_NAME: name,
                     },
+                    options={
+                        CONF_REFRESH_INTERVAL: DEFAULT_REFRESH_INTERVAL,
+                    },
                 )
             else:
                 errors["base"] = "device_not_found"
@@ -177,11 +187,18 @@ class OneMeterOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
+        # Create refresh interval options
+        refresh_options = {
+            REFRESH_INTERVAL_1: "1 minute",
+            REFRESH_INTERVAL_5: "5 minutes", 
+            REFRESH_INTERVAL_15: "15 minutes (default)"
+        }
+        
         options = {
-            vol.Optional(
-                "scan_interval",
-                default=self.config_entry.options.get("scan_interval", 300),
-            ): vol.All(vol.Coerce(int), vol.Range(min=30, max=3600)),
+            vol.Required(
+                CONF_REFRESH_INTERVAL,
+                default=self.config_entry.options.get(CONF_REFRESH_INTERVAL, DEFAULT_REFRESH_INTERVAL),
+            ): vol.In(refresh_options)
         }
 
         return self.async_show_form(step_id="init", data_schema=vol.Schema(options))

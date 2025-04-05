@@ -33,8 +33,9 @@
       "init": {
         "title": "OneMeter Options",
         "data": {
-          "scan_interval": "Data Update Interval (seconds)"
-        }
+          "refresh_interval": "Refresh Interval"
+        },
+        "description": "Choose how often the integration should fetch data from OneMeter Cloud."
       }
     }
   }

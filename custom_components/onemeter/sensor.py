@@ -1,6 +1,7 @@
 """Support for OneMeter sensors."""
 import logging
 from datetime import datetime, timedelta
+import math
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from homeassistant.components.sensor import (
@@ -13,6 +14,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_API_KEY,
     CONF_DEVICE_ID,
+    CONF_NAME,
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
     UnitOfEnergy,
@@ -28,11 +30,14 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
 )
+from homeassistant.util import dt as dt_util
 
 from .const import (
-    DOMAIN, 
-    SCAN_INTERVAL,
-    # Import all OBIS codes from const.py instead of api.py
+    DOMAIN,
+    CONF_REFRESH_INTERVAL,
+    DEFAULT_REFRESH_INTERVAL,
+    UPDATE_OFFSET_SECONDS,
+    # Import all OBIS codes from const.py
     OBIS_TARIFF,
     OBIS_ENERGY_PLUS,
     OBIS_ENERGY_MINUS,
@@ -443,52 +448,19 @@ async def async_setup_entry(
     api_key = config_entry.data[CONF_API_KEY]
     device_id = config_entry.data[CONF_DEVICE_ID]
     
+    # Get the refresh interval from options (default to 15 minutes)
+    refresh_interval = config_entry.options.get(CONF_REFRESH_INTERVAL, DEFAULT_REFRESH_INTERVAL)
+    
     # Create API client
     client = OneMeterApiClient(device_id=device_id, api_key=api_key)
     
-    # Define coordinator update method
-    async def async_update_data() -> Dict[str, Any]:
-        """Fetch data from the OneMeter API."""
-        data: Dict[str, Any] = {}
-        
-        try:
-            # Get device data for all readings
-            device_data = await client.get_device_data()
-            
-            # Get detailed readings with all OBIS codes
-            all_obis_codes = list(set(SENSOR_TO_OBIS_MAP.values()))
-            readings_data = await client.get_readings(1, all_obis_codes)
-            
-            if device_data or readings_data:
-                # Extract all values from device data and readings
-                for sensor_key, obis_code in SENSOR_TO_OBIS_MAP.items():
-                    # Try to get the value from device data first
-                    value = client.extract_device_value(device_data, obis_code)
-                    
-                    # If not found, try to get from readings data
-                    if value is None and readings_data:
-                        value = client.extract_reading_value(readings_data, obis_code)
-                    
-                    if value is not None:
-                        data[sensor_key] = value
-                
-                # Also extract monthly usage data if available
-                data["this_month"] = client.get_this_month_usage(device_data)
-                data["previous_month"] = client.get_previous_month_usage(device_data)
-                
-                return data
-            else:
-                raise UpdateFailed("Failed to fetch data from OneMeter API")
-        except Exception as err:
-            raise UpdateFailed(f"Error communicating with OneMeter API: {err}")
-    
     # Create update coordinator
-    coordinator = DataUpdateCoordinator(
+    coordinator = OneMeterUpdateCoordinator(
         hass,
-        _LOGGER,
-        name="onemeter",
-        update_method=async_update_data,
-        update_interval=SCAN_INTERVAL,
+        client=client,
+        refresh_interval=refresh_interval,
+        name=config_entry.data.get(CONF_NAME, device_id),
+        device_id=device_id,
     )
     
     # Fetch initial data
@@ -501,6 +473,111 @@ async def async_setup_entry(
             entities.append(OneMeterSensor(coordinator, description, config_entry.entry_id, device_id))
     
     async_add_entities(entities)
+
+
+class OneMeterUpdateCoordinator(DataUpdateCoordinator):
+    """Class to coordinate updates for OneMeter sensors."""
+    
+    def __init__(
+        self, 
+        hass: HomeAssistant,
+        client: OneMeterApiClient,
+        refresh_interval: int,
+        name: str,
+        device_id: str
+    ) -> None:
+        """Initialize the coordinator with custom update interval."""
+        self.client = client
+        self.device_id = device_id
+        self._refresh_interval_minutes = refresh_interval
+        
+        # Calculate the next update time for synchronized updates
+        update_interval = self._calculate_update_interval()
+        
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=name,
+            update_method=self._async_update_data,
+            update_interval=update_interval,
+        )
+    
+    def _calculate_update_interval(self) -> timedelta:
+        """Calculate the time until the next synchronized update."""
+        now = dt_util.now()
+        
+        # Calculate minutes until the next interval (1, 5, or 15 min)
+        minutes_to_sync = self._refresh_interval_minutes - (now.minute % self._refresh_interval_minutes)
+        
+        # If we're already at an exact interval, use the full interval delay
+        if minutes_to_sync == self._refresh_interval_minutes:
+            minutes_to_sync = 0
+        
+        # Calculate seconds until the next interval + offset seconds
+        seconds_to_sync = (minutes_to_sync * 60) - now.second + UPDATE_OFFSET_SECONDS
+        
+        # If we're too close to the next update time, add a full interval
+        if seconds_to_sync < 5:  # If less than 5 seconds away
+            seconds_to_sync += self._refresh_interval_minutes * 60
+            
+        _LOGGER.debug(
+            "Calculated update interval: %s minutes, %s seconds to next sync",
+            self._refresh_interval_minutes, seconds_to_sync
+        )
+        
+        return timedelta(seconds=seconds_to_sync)
+    
+    async def _async_update_data(self) -> Dict[str, Any]:
+        """Update data via API and schedule next update at fixed intervals."""
+        try:
+            # Get the data
+            data = await self.async_update_data()
+            
+            # Schedule the next update at a precisely timed interval
+            next_update = self._calculate_update_interval()
+            self.update_interval = next_update
+            
+            _LOGGER.debug("Next update scheduled in %s", next_update)
+            
+            return data
+        except Exception as err:
+            _LOGGER.error("Error updating OneMeter data: %s", err)
+            raise UpdateFailed(f"Error updating OneMeter data: {err}") from err
+    
+    async def async_update_data(self) -> Dict[str, Any]:
+        """Fetch data from the OneMeter API."""
+        data: Dict[str, Any] = {}
+        
+        try:
+            # Get device data for all readings
+            device_data = await self.client.get_device_data()
+            
+            # Get detailed readings with all OBIS codes
+            all_obis_codes = list(set(SENSOR_TO_OBIS_MAP.values()))
+            readings_data = await self.client.get_readings(1, all_obis_codes)
+            
+            if device_data or readings_data:
+                # Extract all values from device data and readings
+                for sensor_key, obis_code in SENSOR_TO_OBIS_MAP.items():
+                    # Try to get the value from device data first
+                    value = self.client.extract_device_value(device_data, obis_code)
+                    
+                    # If not found, try to get from readings data
+                    if value is None and readings_data:
+                        value = self.client.extract_reading_value(readings_data, obis_code)
+                    
+                    if value is not None:
+                        data[sensor_key] = value
+                
+                # Also extract monthly usage data if available
+                data["this_month"] = self.client.get_this_month_usage(device_data)
+                data["previous_month"] = self.client.get_previous_month_usage(device_data)
+                
+                return data
+            else:
+                raise UpdateFailed("Failed to fetch data from OneMeter API")
+        except Exception as err:
+            raise UpdateFailed(f"Error communicating with OneMeter API: {err}")
 
 
 class OneMeterSensor(CoordinatorEntity, SensorEntity):
