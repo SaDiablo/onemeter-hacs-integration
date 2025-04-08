@@ -151,6 +151,16 @@ SENSOR_TYPES: Dict[str, SensorEntityDescription] = {
         icon="mdi:battery",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
+    # New battery percentage sensor
+    "battery_percentage": SensorEntityDescription(
+        key="battery_percentage",
+        name="Battery Percentage",
+        native_unit_of_measurement=PERCENTAGE,
+        device_class=SensorDeviceClass.BATTERY,
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:battery",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
     "meter_serial": SensorEntityDescription(
         key="meter_serial",
         name="Meter Serial Number",
@@ -568,6 +578,11 @@ class OneMeterUpdateCoordinator(DataUpdateCoordinator):
                     
                     if value is not None:
                         data[sensor_key] = value
+                
+                # Add battery percentage calculated from battery voltage
+                if "battery_voltage" in data and isinstance(data["battery_voltage"], (int, float)):
+                    from .helpers import calculate_battery_percentage
+                    data["battery_percentage"] = calculate_battery_percentage(data["battery_voltage"])
                 
                 # Also extract monthly usage data if available
                 data["this_month"] = self.client.get_this_month_usage(device_data)
