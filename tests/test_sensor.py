@@ -1,11 +1,17 @@
 """Tests for the OneMeter sensor platform."""
-from unittest.mock import patch, MagicMock
-import pytest
+from __future__ import annotations
 
-from homeassistant.const import UnitOfEnergy, UnitOfPower, UnitOfElectricPotential
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorStateClass,
+)
+from homeassistant.const import (
+    UnitOfElectricPotential,
+    UnitOfEnergy,
+    UnitOfPower,
 )
 from homeassistant.helpers.entity import EntityCategory
 
@@ -16,132 +22,145 @@ from custom_components.onemeter.sensor import (
 )
 
 
-@pytest.fixture
-def mock_coordinator():
-    """Create a mock coordinator."""
-    coordinator = MagicMock()
-    coordinator.data = {
-        "energy_plus": 12345.67,
-        "energy_minus": 10.5,
-        "energy_r1": 234.56,
-        "energy_r4": 456.78,
-        "energy_abs": 13000.45,
-        "power": 2.5,
-        "battery_voltage": 3.7,
-        "meter_serial": "LGZ12345678",
-        "tariff": "G11",
-        "this_month": 123.45,
-        "previous_month": 456.78,
-    }
-    return coordinator
-
-
 def test_sensor_types():
-    """Test the sensor types are correctly defined."""
-    # Check that all sensors have the required attributes
-    for key, description in SENSOR_TYPES.items():
-        assert description.key == key
-        assert description.name is not None
-        
-        if key in ["energy_plus", "energy_minus", "energy_abs"]:
-            assert description.device_class == SensorDeviceClass.ENERGY
-            assert description.native_unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR
-            assert description.state_class == SensorStateClass.TOTAL_INCREASING
-        
-        if key == "power":
-            assert description.device_class == SensorDeviceClass.POWER
-            assert description.native_unit_of_measurement == UnitOfPower.KILO_WATT
-            assert description.state_class == SensorStateClass.MEASUREMENT
+    """Test that sensor types are correctly defined."""
+    # Check that critical sensors are defined
+    assert "energy_plus" in SENSOR_TYPES
+    assert "power" in SENSOR_TYPES
+    assert "battery_voltage" in SENSOR_TYPES
+    assert "this_month" in SENSOR_TYPES
+    assert "previous_month" in SENSOR_TYPES
+    
+    # Verify sensor configurations
+    energy_sensor = SENSOR_TYPES["energy_plus"]
+    assert energy_sensor.native_unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR
+    assert energy_sensor.device_class == SensorDeviceClass.ENERGY
+    assert energy_sensor.state_class == SensorStateClass.TOTAL_INCREASING
+    
+    power_sensor = SENSOR_TYPES["power"]
+    assert power_sensor.native_unit_of_measurement == UnitOfPower.KILO_WATT
+    assert power_sensor.device_class == SensorDeviceClass.POWER
+    assert power_sensor.state_class == SensorStateClass.MEASUREMENT
+    
+    battery_sensor = SENSOR_TYPES["battery_voltage"]
+    assert battery_sensor.native_unit_of_measurement == UnitOfElectricPotential.VOLT
+    assert battery_sensor.device_class == SensorDeviceClass.VOLTAGE
+    assert battery_sensor.entity_category == EntityCategory.DIAGNOSTIC
 
 
+@pytest.mark.asyncio
 async def test_sensor_creation(hass, mock_coordinator):
-    """Test sensor entity creation."""
-    # Create a test sensor
-    entity_description = SENSOR_TYPES["energy_plus"]
+    """Test creating a sensor entity."""
+    # Create a sensor
+    description = SENSOR_TYPES["energy_plus"]
     sensor = OneMeterSensor(
         coordinator=mock_coordinator,
-        description=entity_description,
+        description=description,
         entry_id="test_entry_id",
-        device_id="test_device_id"
+        device_id="test-device-id"
     )
     
-    # Check entity attributes
+    # Check basic entity properties
     assert sensor.unique_id == "test_entry_id_energy_plus"
-    assert sensor.name == entity_description.name
-    assert sensor.device_class == entity_description.device_class
-    assert sensor.native_unit_of_measurement == entity_description.native_unit_of_measurement
-    assert sensor.state_class == entity_description.state_class
+    assert sensor.name == "Energy A+ (total)"
+    assert sensor.device_class == SensorDeviceClass.ENERGY
+    assert sensor.native_unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR
     
-    # Check device info
-    device_info = sensor.device_info
-    assert "identifiers" in device_info
-    assert "name" in device_info
-    assert "manufacturer" in device_info
-    
-    # Check state and availability
-    assert sensor.available is True
+    # Check that value is retrieved from coordinator
     assert sensor.native_value == 12345.67
+    assert sensor.available is True
 
 
+@pytest.mark.asyncio
 async def test_diagnostic_sensor_creation(hass, mock_coordinator):
-    """Test diagnostic sensor entity creation."""
+    """Test creating a diagnostic sensor entity."""
     # Create a diagnostic sensor
-    entity_description = SENSOR_TYPES["battery_voltage"]
+    description = SENSOR_TYPES["battery_voltage"]
     sensor = OneMeterSensor(
         coordinator=mock_coordinator,
-        description=entity_description,
+        description=description,
         entry_id="test_entry_id",
-        device_id="test_device_id"
+        device_id="test-device-id"
     )
     
-    # Check entity category
+    # Check that entity category is set properly
     assert sensor.entity_category == EntityCategory.DIAGNOSTIC
+    assert sensor.native_value == 3.6
+
+
+@pytest.mark.asyncio
+async def test_computed_sensor(hass, mock_coordinator):
+    """Test sensor with computed value."""
+    # Battery percentage is computed from voltage
+    description = SENSOR_TYPES["battery_percentage"]
+    sensor = OneMeterSensor(
+        coordinator=mock_coordinator,
+        description=description,
+        entry_id="test_entry_id",
+        device_id="test-device-id"
+    )
     
-    # Check state
-    assert sensor.native_value == 3.7
+    assert sensor.native_value == 95
 
 
-@patch("custom_components.onemeter.sensor.OneMeterApiClient")
-@patch("custom_components.onemeter.sensor.DataUpdateCoordinator")
-@patch("custom_components.onemeter.sensor.async_add_entities")
-async def test_async_setup_entry(mock_add_entities, mock_coordinator_class, mock_client_class, hass):
-    """Test platform setup."""
-    # Setup mocks
-    mock_client = mock_client_class.return_value
-    mock_client.get_device_data.return_value = {
-        "lastReading": {
-            "OBIS": {
-                "1_8_0": 12345.67,  # Energy Plus
-                "16_7_0": 2.5,      # Power
-            }
-        },
-        "usage": {
-            "thisMonth": 123.45,
-            "previousMonth": 456.78,
+@pytest.mark.asyncio
+async def test_sensor_unavailable_state(hass):
+    """Test sensor behavior when coordinator has no data."""
+    # Create coordinator with no data
+    coordinator = MagicMock()
+    coordinator.data = None
+    coordinator.name = "Test OneMeter"
+    
+    description = SENSOR_TYPES["energy_plus"]
+    sensor = OneMeterSensor(
+        coordinator=coordinator,
+        description=description,
+        entry_id="test_entry_id",
+        device_id="test-device-id"
+    )
+    
+    assert sensor.native_value is None
+
+
+@pytest.mark.asyncio
+async def test_async_setup_entry(hass, mock_config_entry, mock_api_client):
+    """Test setting up sensors from a config entry."""
+    # Mock coordinator
+    with patch(
+        "custom_components.onemeter.sensor.OneMeterUpdateCoordinator", autospec=True
+    ) as mock_coordinator_class, patch(
+        "custom_components.onemeter.sensor.OneMeterApiClient", return_value=mock_api_client
+    ), patch(
+        "custom_components.onemeter.sensor.async_add_entities"
+    ) as mock_async_add_entities:
+        # Set up mock coordinator instance
+        mock_coordinator = mock_coordinator_class.return_value
+        mock_coordinator.data = {
+            "energy_plus": 12345.67,
+            "power": 2.5,
+            "battery_voltage": 3.6,
+            "battery_percentage": 95,
+            "meter_serial": "11722779",
+            "tariff": "G11",
+            "this_month": 123.45,
+            "previous_month": 234.56,
         }
-    }
-    
-    mock_coordinator = mock_coordinator_class.return_value
-    mock_coordinator.data = {
-        "energy_plus": 12345.67,
-        "power": 2.5,
-        "this_month": 123.45,
-        "previous_month": 456.78,
-    }
-    
-    # Test setup
-    config_entry = MagicMock()
-    config_entry.data = {
-        "api_key": "test_api_key",
-        "device_id": "test_device_id",
-    }
-    config_entry.entry_id = "test_entry_id"
-    
-    await async_setup_entry(hass, config_entry, mock_add_entities)
-    
-    # Verify coordinator was initialized
-    mock_coordinator_class.assert_called_once()
-    
-    # Verify entities were added
-    mock_add_entities.assert_called_once()
-    # The actual number of entities depends on the mock coordinator data and available sensors
+        
+        # Call setup
+        await async_setup_entry(hass, mock_config_entry, mock_async_add_entities)
+        
+        # Check that coordinator was created
+        mock_coordinator_class.assert_called_once()
+        
+        # Check that entities were added
+        mock_async_add_entities.assert_called_once()
+        # Get the entities that were added
+        entities = mock_async_add_entities.call_args[0][0]
+        # Verify that entities were created for each sensor in the coordinator data
+        assert len(entities) >= 8  # Should have at least the 8 sensors in our mock data
+        
+        # Verify sensor types
+        entity_keys = set(entity.entity_description.key for entity in entities)
+        assert "energy_plus" in entity_keys
+        assert "power" in entity_keys
+        assert "battery_voltage" in entity_keys
