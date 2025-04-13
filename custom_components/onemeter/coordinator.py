@@ -17,9 +17,31 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def _validate_api_data(device_data: Any, readings_data: Any) -> None:
-    """Validate API data and raise UpdateFailed if invalid."""
-    if not (device_data or readings_data):
+    """Validate API data and raise UpdateFailed if invalid.
+    
+    Args:
+        device_data: Device data from the API
+        readings_data: Readings data from the API
+        
+    Raises:
+        UpdateFailed: If both device_data and readings_data are invalid
+    """
+    if not device_data and not readings_data:
         raise UpdateFailed("Failed to fetch data from OneMeter API")
+        
+    if not device_data:
+        _LOGGER.warning("Device data is missing or empty, using only readings data")
+    elif not readings_data:
+        _LOGGER.warning("Readings data is missing or empty, using only device data")
+        
+    # Check for specific data structure integrity
+    if device_data and not isinstance(device_data, dict):
+        _LOGGER.error("Device data has invalid format: %s", type(device_data))
+        raise UpdateFailed("Device data has invalid format")
+        
+    if readings_data and not isinstance(readings_data, dict):
+        _LOGGER.error("Readings data has invalid format: %s", type(readings_data))
+        raise UpdateFailed("Readings data has invalid format")
 
 
 class OneMeterUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -74,28 +96,56 @@ class OneMeterUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             seconds_to_sync,
         )
 
-        return timedelta(seconds=seconds_to_sync)
-
-    async def _async_update_data(self) -> dict[str, Any]:
-        """Update data via API and schedule next update at fixed intervals."""
+        return timedelta(seconds=seconds_to_sync)    async def _async_update_data(self) -> dict[str, Any]:
+        """Update data via API and schedule next update at fixed intervals.
+        
+        Returns:
+            Dictionary containing the latest sensor data values
+            
+        Raises:
+            UpdateFailed: When unable to fetch or process data from the OneMeter API
+        """
+        device_data = {}
+        readings_data = {}
+        data: dict[str, Any] = {}
+        
         try:
-            # Get device data for all readings
-            device_data = await self.client.get_device_data()
-
-            # Get detailed readings with all OBIS codes
+            # Use gather to run API calls concurrently for better performance
+            device_task = self.hass.async_create_task(self.client.get_device_data())
+            
+            # Deduplicate OBIS codes for more efficient API calls
             all_obis_codes = list(set(SENSOR_TO_OBIS_MAP.values()))
-            readings_data = await self.client.get_readings(1, all_obis_codes)
-
-            # Validate the data
+            readings_task = self.hass.async_create_task(
+                self.client.get_readings(1, all_obis_codes)
+            )
+            
+            # Wait for both tasks to complete
+            results = await asyncio.gather(
+                device_task, readings_task, 
+                return_exceptions=True
+            )
+            
+            # Process results and handle any exceptions
+            if isinstance(results[0], Exception):
+                _LOGGER.error("Error fetching device data: %s", results[0])
+            else:
+                device_data = results[0]
+                
+            if isinstance(results[1], Exception):
+                _LOGGER.error("Error fetching readings data: %s", results[1])
+            else:
+                readings_data = results[1]
+                
+            # Validate the data - this will raise UpdateFailed if both sources failed
             _validate_api_data(device_data, readings_data)
+            
         except Exception as err:
             _LOGGER.error("Error updating OneMeter data: %s", err)
             raise UpdateFailed(f"Error communicating with OneMeter API: {err}") from err
-        else:
-            data: dict[str, Any] = {}
-
-            # Extract all values from device data and readings
-            for sensor_key, obis_code in SENSOR_TO_OBIS_MAP.items():
+            
+        # Extract all values from device data and readings
+        for sensor_key, obis_code in SENSOR_TO_OBIS_MAP.items():
+            try:
                 # Try to get the value from device data first
                 value = self.client.extract_device_value(device_data, obis_code)
 
@@ -105,8 +155,11 @@ class OneMeterUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
                 if value is not None:
                     data[sensor_key] = value
+            except Exception as err:
+                _LOGGER.debug("Error extracting value for %s: %s", sensor_key, err)
 
-            # Add battery percentage calculated from battery voltage
+        # Add battery percentage calculated from battery voltage
+        try:
             if "battery_voltage" in data and isinstance(
                 data["battery_voltage"], (int, float)
             ):
@@ -115,15 +168,29 @@ class OneMeterUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 data["battery_percentage"] = calculate_battery_percentage(
                     data["battery_voltage"]
                 )
+        except Exception as err:
+            _LOGGER.debug("Error calculating battery percentage: %s", err)
 
-            # Also extract monthly usage data if available
-            data["this_month"] = self.client.get_this_month_usage(device_data)
-            data["previous_month"] = self.client.get_previous_month_usage(device_data)
+        # Extract monthly usage data if available
+        try:
+            monthly_data = {
+                "this_month": self.client.get_this_month_usage(device_data),
+                "previous_month": self.client.get_previous_month_usage(device_data),
+            }
+            
+            # Only add non-None values to the data dictionary
+            data.update({k: v for k, v in monthly_data.items() if v is not None})
+        except Exception as err:
+            _LOGGER.debug("Error extracting monthly usage data: %s", err)
 
-            # Schedule the next update at a precisely timed interval
-            next_update = self._calculate_update_interval()
-            self.update_interval = next_update
+        # Schedule the next update at a precisely timed interval
+        next_update = self._calculate_update_interval()
+        self.update_interval = next_update
 
-            _LOGGER.debug("Next update scheduled in %s", next_update)
+        _LOGGER.debug(
+            "Update completed with %d values, next update in %s", 
+            len(data), 
+            next_update
+        )
 
-            return data
+        return data

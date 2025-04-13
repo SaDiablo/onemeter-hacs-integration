@@ -150,6 +150,8 @@ SENSOR_TO_OBIS_MAP: dict[str, str] = {
 # API Configuration
 API_BASE_URL = "https://cloud.onemeter.com/api/"
 API_TIMEOUT = 30
+API_RETRY_ATTEMPTS = 3
+API_RETRY_DELAY = 2  # seconds between retry attempts
 
 # Icons
 ICON_ENERGY = "mdi:lightning-bolt"
