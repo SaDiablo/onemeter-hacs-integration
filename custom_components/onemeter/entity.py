@@ -1,31 +1,43 @@
-import logging
+"""Base entity for OneMeter integration."""
 
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from const import DOMAIN, NAME, VERSION
-from coordinator import OneMeterDataUpdateCoordinator
+from .const import DOMAIN
+from .coordinator import OneMeterUpdateCoordinator
 
-_LOGGER: logging.Logger = logging.getLogger(__package__)
+_LOGGER = logging.getLogger(__name__)
 
 
-class OnemeterEntity(CoordinatorEntity):
-    def __init__(self, coordinator: OneMeterDataUpdateCoordinator, entry):
+class OneMeterEntity(CoordinatorEntity[dict[str, Any]]):
+    """Base entity for OneMeter integration."""
+
+    def __init__(
+        self,
+        coordinator: OneMeterUpdateCoordinator,
+        device_id: str,
+    ) -> None:
+        """Initialize the entity."""
         super().__init__(coordinator)
-        self.entry = entry
+        self._device_id = device_id
 
     @property
-    def device_info(self):
-        return {
-            "identifiers": {(DOMAIN, self.coordinator.api.host)},
-            "name": NAME,
-            "model": VERSION,
-            "manufacturer": NAME,
-        }
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._device_id)},
+            name="OneMeter Energy Monitor",
+            manufacturer="OneMeter",
+            model="Cloud Energy Monitor",
+            sw_version="1.0",
+        )
 
     @property
     def available(self) -> bool:
-        return not not self.coordinator.data
-
-    @property
-    def should_poll(self) -> bool:
-        return False
+        """Return if entity is available."""
+        return self.coordinator.data is not None

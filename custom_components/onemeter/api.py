@@ -1,12 +1,13 @@
 """API client for OneMeter Cloud API."""
+
+from __future__ import annotations
+
 import asyncio
-import datetime
-import json
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, cast
 
 import aiohttp
-import async_timeout
+from aiohttp import ClientSession
 
 from .const import (
     API_BASE_URL,
@@ -34,13 +35,15 @@ _LOGGER = logging.getLogger(__name__)
 class OneMeterApiClient:
     """API client for OneMeter Cloud."""
 
-    def __init__(self, device_id: str, api_key: str):
+    def __init__(self, device_id: str, api_key: str) -> None:
         """Initialize the client."""
         self.device_id = device_id
         self.api_key = api_key
-        self._session = None
+        self._session: ClientSession | None = None
 
-    async def api_call(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Dict:
+    async def api_call(
+        self, endpoint: str, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Make an API call."""
         url = f"{API_BASE_URL}{endpoint}"
         headers = {"Authorization": self.api_key}
@@ -49,31 +52,36 @@ class OneMeterApiClient:
             self._session = aiohttp.ClientSession()
 
         try:
-            with async_timeout.timeout(API_TIMEOUT):
-                async with self._session.get(url, headers=headers, params=params) as response:
+            async with asyncio.timeout(API_TIMEOUT):
+                async with self._session.get(
+                    url, headers=headers, params=params
+                ) as response:
                     if response.status == 200:
-                        return await response.json()
-                    else:
-                        _LOGGER.error(
-                            "API call error: %s - %s", response.status, await response.text()
-                        )
-                        return {}
-        except asyncio.TimeoutError:
+                        return cast(dict[str, Any], await response.json())
+
+                    _LOGGER.error(
+                        "API call error: %s - %s",
+                        response.status,
+                        await response.text(),
+                    )
+        except TimeoutError:
             _LOGGER.error("API timeout for %s", url)
-            return {}
         except (aiohttp.ClientError, ValueError) as err:
             _LOGGER.error("API error: %s", err)
-            return {}
 
-    async def get_all_devices(self) -> Dict[str, Any]:
+        return {}
+
+    async def get_all_devices(self) -> dict[str, Any]:
         """Get a list of all devices from the API."""
         return await self.api_call("devices")
 
-    async def get_device_data(self) -> Dict[str, Any]:
+    async def get_device_data(self) -> dict[str, Any]:
         """Get device data from the API."""
         return await self.api_call(f"devices/{self.device_id}")
 
-    async def get_readings(self, count: int = 1, obis_codes: List[str] = None) -> Dict[str, Any]:
+    async def get_readings(
+        self, count: int = 1, obis_codes: list[str] | None = None
+    ) -> dict[str, Any]:
         """Get readings data for specific OBIS codes."""
         if obis_codes is None:
             obis_codes = [
@@ -87,20 +95,23 @@ class OneMeterApiClient:
                 OBIS_METER_SERIAL,
                 OBIS_TARIFF,
             ]
-        
+
         params = {
             "obis": ",".join(obis_codes),
             "count": count,
         }
-        
+
         return await self.api_call(f"devices/{self.device_id}/readings", params)
 
-    def extract_device_value(self, data: Dict[str, Any], obis_code: str) -> Any:
+    def extract_device_value(self, data: dict[str, Any], obis_code: str) -> Any:
         """Extract a value from device data by OBIS code."""
         try:
             if RESP_DEVICES in data:
                 device = data[RESP_DEVICES][0]  # Assume first device
-                if RESP_LAST_READING in device and RESP_OBIS in device[RESP_LAST_READING]:
+                if (
+                    RESP_LAST_READING in device
+                    and RESP_OBIS in device[RESP_LAST_READING]
+                ):
                     obis_data = device[RESP_LAST_READING][RESP_OBIS]
                     if obis_code in obis_data:
                         return obis_data[obis_code]
@@ -108,22 +119,24 @@ class OneMeterApiClient:
                 obis_data = data[RESP_LAST_READING][RESP_OBIS]
                 if obis_code in obis_data:
                     return obis_data[obis_code]
-            return None
         except (KeyError, IndexError, TypeError):
-            return None
+            pass
 
-    def extract_reading_value(self, data: Dict[str, Any], obis_code: str) -> Any:
+        return None
+
+    def extract_reading_value(self, data: dict[str, Any], obis_code: str) -> Any:
         """Extract a value from readings data by OBIS code."""
         try:
             if data and len(data) > 0:
                 reading = data[0]  # Get most recent reading
                 if RESP_OBIS in reading and obis_code in reading[RESP_OBIS]:
                     return reading[RESP_OBIS][obis_code]
-            return None
         except (KeyError, IndexError, TypeError):
-            return None
+            pass
 
-    def get_this_month_usage(self, data: Dict[str, Any]) -> Optional[float]:
+        return None
+
+    def get_this_month_usage(self, data: dict[str, Any]) -> float | None:
         """Get this month's usage from device data."""
         try:
             if RESP_DEVICES in data:
@@ -132,11 +145,12 @@ class OneMeterApiClient:
                     return float(device[RESP_USAGE][RESP_THIS_MONTH])
             elif RESP_USAGE in data and RESP_THIS_MONTH in data[RESP_USAGE]:
                 return float(data[RESP_USAGE][RESP_THIS_MONTH])
-            return None
         except (KeyError, IndexError, ValueError, TypeError):
-            return None
+            pass
 
-    def get_previous_month_usage(self, data: Dict[str, Any]) -> Optional[float]:
+        return None
+
+    def get_previous_month_usage(self, data: dict[str, Any]) -> float | None:
         """Get previous month's usage from device data."""
         try:
             if RESP_DEVICES in data:
@@ -145,10 +159,11 @@ class OneMeterApiClient:
                     return float(device[RESP_USAGE][RESP_PREV_MONTH])
             elif RESP_USAGE in data and RESP_PREV_MONTH in data[RESP_USAGE]:
                 return float(data[RESP_USAGE][RESP_PREV_MONTH])
-            return None
         except (KeyError, IndexError, ValueError, TypeError):
-            return None
-            
+            pass
+
+        return None
+
     async def close(self) -> None:
         """Close open client session."""
         if self._session:
