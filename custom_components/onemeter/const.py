@@ -99,6 +99,11 @@ OBIS_READOUT_TIMESTAMP_CORRECTED = "S_1_1_10"  # Readout timestamp (corrected)
 OBIS_ENERGY_CONSUMPTION_BLINK = (
     "S_1_1_12"  # Energy consumption (based on blink measurements)
 )
+
+# Device information OBIS codes
+OBIS_FIRMWARE_VERSION = "S_1_2_0"  # Firmware version
+OBIS_HARDWARE_VERSION = "S_1_2_1"  # Hardware version
+OBIS_MAC_ADDRESS = "S_1_2_2"  # MAC address (may be same as physical address)
 OBIS_DEVICE_STATUS = "S_1_1_16"  # Status of OneMeter Device
 
 # Map sensor keys to OBIS codes
@@ -143,6 +148,11 @@ SENSOR_TO_OBIS_MAP: dict[str, str] = {
     "temperature": OBIS_TEMPERATURE,
     "readout_timestamp": OBIS_READOUT_TIMESTAMP,
     "readout_timestamp_corrected": OBIS_READOUT_TIMESTAMP_CORRECTED,
+    # Device information
+    "firmware_version": OBIS_FIRMWARE_VERSION,
+    "hardware_version": OBIS_HARDWARE_VERSION,
+    "mac_address": OBIS_MAC_ADDRESS,
+    "device_status": OBIS_DEVICE_STATUS,
     "energy_consumption_blink": OBIS_ENERGY_CONSUMPTION_BLINK,
     "device_status": OBIS_DEVICE_STATUS,
 }
