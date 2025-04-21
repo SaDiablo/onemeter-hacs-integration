@@ -284,11 +284,14 @@ SENSOR_TYPES: dict[str, SensorEntityDescription] = {
         key="time",
         name="Time",
         icon="mdi:clock",
+        device_class=SensorDeviceClass.TIMESTAMP,
     ),
     "date": SensorEntityDescription(
         key="date",
-        name="Date",
+        name="Last Total Readout",
         icon="mdi:calendar",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     "active_demand": SensorEntityDescription(
         key="active_demand",
@@ -323,13 +326,14 @@ SENSOR_TYPES: dict[str, SensorEntityDescription] = {
     "readout_timestamp": SensorEntityDescription(
         key="readout_timestamp",
         name="Readout Timestamp",
-        icon="mdi:clock",
-        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:clock-outline",
+        device_class=SensorDeviceClass.TIMESTAMP,
     ),
     "readout_timestamp_corrected": SensorEntityDescription(
         key="readout_timestamp_corrected",
         name="Readout Timestamp Corrected",
         icon="mdi:clock",
+        device_class=SensorDeviceClass.TIMESTAMP,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     "energy_consumption_blink": SensorEntityDescription(
