@@ -132,13 +132,26 @@ class OneMeterUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if "uart_params" in data and isinstance(data["uart_params"], str):
                 uart_value = data["uart_params"]
                 try:
-                    # Parse "3/300" format where 3 is IR power and 300 is baud rate
+                    # Parse formats like "3/300" or other variants
                     if "/" in uart_value:
-                        ir_power, baud_rate = uart_value.split("/", 1)
-                        data["ir_power"] = ir_power.strip()
-                        data["baud_rate"] = int(baud_rate.strip())
-                except (ValueError, TypeError):
-                    _LOGGER.debug("Could not parse UART parameters: %s", uart_value)
+                        parts = uart_value.split("/", 1)
+                        if len(parts) == 2:
+                            ir_power, baud_rate = parts
+                            data["ir_power"] = ir_power.strip()
+                            # Ensure baud rate is a numeric value
+                            data["baud_rate"] = int(baud_rate.strip())
+                except (ValueError, TypeError) as err:
+                    _LOGGER.debug("Could not parse UART parameters: %s - %s", uart_value, err)
+            elif "uart_params" in data and isinstance(data["uart_params"], list):
+                # Handle case where uart_params might be a list like [7, 9600]
+                try:
+                    uart_list = data["uart_params"]
+                    if len(uart_list) >= 2:
+                        # First element is typically IR power, second is baud rate
+                        data["ir_power"] = str(uart_list[0])
+                        data["baud_rate"] = int(uart_list[1]) if isinstance(uart_list[1], (int, float, str)) else None
+                except (IndexError, ValueError, TypeError) as err:
+                    _LOGGER.debug("Could not parse UART parameters list: %s - %s", data["uart_params"], err)
             
             # Add battery percentage calculated from battery voltage
             try:
