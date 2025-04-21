@@ -19,7 +19,6 @@ from homeassistant.const import (
     UnitOfElectricPotential,
     UnitOfEnergy,
     UnitOfPower,
-    UnitOfReactiveEnergy,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
@@ -27,7 +26,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
 from .api import OneMeterApiClient
-from .const import CONF_REFRESH_INTERVAL, DEFAULT_REFRESH_INTERVAL
+from .const import CONF_REFRESH_INTERVAL, DEFAULT_REFRESH_INTERVAL, UNIT_REACTIVE_ENERGY
 from .coordinator import OneMeterUpdateCoordinator
 from .entity import OneMeterEntity
 
@@ -60,7 +59,7 @@ SENSOR_TYPES: dict[str, SensorEntityDescription] = {
     "energy_r1": SensorEntityDescription(
         key="energy_r1",
         name="Energy R1 (total)",
-        native_unit_of_measurement=UnitOfReactiveEnergy.KILOVOLT_AMPERE_REACTIVE_HOUR,
+        native_unit_of_measurement=UNIT_REACTIVE_ENERGY,
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         icon="mdi:flash",
@@ -68,7 +67,7 @@ SENSOR_TYPES: dict[str, SensorEntityDescription] = {
     "energy_r4": SensorEntityDescription(
         key="energy_r4",
         name="Energy R4 (total)",
-        native_unit_of_measurement=UnitOfReactiveEnergy.KILOVOLT_AMPERE_REACTIVE_HOUR,
+        native_unit_of_measurement=UNIT_REACTIVE_ENERGY,
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         icon="mdi:flash",
@@ -240,56 +239,56 @@ SENSOR_TYPES: dict[str, SensorEntityDescription] = {
     "energy_r1_t1": SensorEntityDescription(
         key="energy_r1_t1",
         name="Reactive energy R1 (tariff I)",
-        native_unit_of_measurement=UnitOfReactiveEnergy.KILOVOLT_AMPERE_REACTIVE_HOUR,
+        native_unit_of_measurement=UNIT_REACTIVE_ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         icon="mdi:flash",
     ),
     "energy_r1_t2": SensorEntityDescription(
         key="energy_r1_t2",
         name="Reactive energy R1 (tariff II)",
-        native_unit_of_measurement=UnitOfReactiveEnergy.KILOVOLT_AMPERE_REACTIVE_HOUR,
+        native_unit_of_measurement=UNIT_REACTIVE_ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         icon="mdi:flash",
     ),
     "energy_r1_t3": SensorEntityDescription(
         key="energy_r1_t3",
         name="Reactive energy R1 (tariff III)",
-        native_unit_of_measurement=UnitOfReactiveEnergy.KILOVOLT_AMPERE_REACTIVE_HOUR,
+        native_unit_of_measurement=UNIT_REACTIVE_ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         icon="mdi:flash",
     ),
     "energy_r1_t4": SensorEntityDescription(
         key="energy_r1_t4",
         name="Reactive energy R1 (tariff IV)",
-        native_unit_of_measurement=UnitOfReactiveEnergy.KILOVOLT_AMPERE_REACTIVE_HOUR,
+        native_unit_of_measurement=UNIT_REACTIVE_ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         icon="mdi:flash",
     ),
     "energy_r4_t1": SensorEntityDescription(
         key="energy_r4_t1",
         name="Reactive energy R4 (tariff I)",
-        native_unit_of_measurement=UnitOfReactiveEnergy.KILOVOLT_AMPERE_REACTIVE_HOUR,
+        native_unit_of_measurement=UNIT_REACTIVE_ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         icon="mdi:flash",
     ),
     "energy_r4_t2": SensorEntityDescription(
         key="energy_r4_t2",
         name="Reactive energy R4 (tariff II)",
-        native_unit_of_measurement=UnitOfReactiveEnergy.KILOVOLT_AMPERE_REACTIVE_HOUR,
+        native_unit_of_measurement=UNIT_REACTIVE_ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         icon="mdi:flash",
     ),
     "energy_r4_t3": SensorEntityDescription(
         key="energy_r4_t3",
         name="Reactive energy R4 (tariff III)",
-        native_unit_of_measurement=UnitOfReactiveEnergy.KILOVOLT_AMPERE_REACTIVE_HOUR,
+        native_unit_of_measurement=UNIT_REACTIVE_ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         icon="mdi:flash",
     ),
     "energy_r4_t4": SensorEntityDescription(
         key="energy_r4_t4",
         name="Reactive energy R4 (tariff IV)",
-        native_unit_of_measurement=UnitOfReactiveEnergy.KILOVOLT_AMPERE_REACTIVE_HOUR,
+        native_unit_of_measurement=UNIT_REACTIVE_ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         icon="mdi:flash",
     ),

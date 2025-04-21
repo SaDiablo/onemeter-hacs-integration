@@ -13,6 +13,9 @@ CONF_DEVICE_ID = "device_id"
 CONF_API_KEY = "api_key"
 CONF_REFRESH_INTERVAL = "refresh_interval"
 
+# Units that aren't available in homeassistant.const
+UNIT_REACTIVE_ENERGY = "kvarh"
+
 # Refresh interval options (in minutes)
 REFRESH_INTERVAL_1 = 1
 REFRESH_INTERVAL_5 = 5
