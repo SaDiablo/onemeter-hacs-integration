@@ -54,7 +54,7 @@ class OneMeterRateLimitError(OneMeterApiError):
 
 class OneMeterApiResponseDict(TypedDict):
     """Type definition for API response data."""
-    
+
     error: NotRequired[str]
 
 
@@ -66,7 +66,7 @@ class OneMeterApiClient:
         self.device_id: Final = device_id
         self.api_key: Final = api_key
         self._session: ClientSession | None = None
-        
+
     async def _create_session(self) -> ClientSession:
         """Create session if needed and return it."""
         if self._session is None or self._session.closed:
@@ -79,9 +79,9 @@ class OneMeterApiClient:
         """Make an API call with retry logic."""
         url = f"{API_BASE_URL}{endpoint}"
         headers = {"Authorization": self.api_key}
-        
+
         session = await self._create_session()
-        
+
         for attempt in range(API_RETRY_ATTEMPTS):
             try:
                 async with asyncio.timeout(API_TIMEOUT):
@@ -90,9 +90,9 @@ class OneMeterApiClient:
                     ) as response:
                         if response.status == 200:
                             return cast(dict[str, Any], await response.json())
-                        
+
                         response_text = await response.text()
-                        
+
                         # Handle specific error codes
                         if response.status == 401:
                             raise OneMeterAuthError(response.status, "Invalid API key or unauthorized access")
@@ -115,11 +115,11 @@ class OneMeterApiClient:
                                 response_text,
                             )
                             return {}
-                            
+
             except (TimeoutError, asyncio.TimeoutError):
                 _LOGGER.warning(
                     "API timeout (attempt %s/%s) for %s",
-                    attempt + 1, 
+                    attempt + 1,
                     API_RETRY_ATTEMPTS,
                     url,
                 )
@@ -134,11 +134,11 @@ class OneMeterApiClient:
                     API_RETRY_ATTEMPTS,
                     err,
                 )
-            
+
             # Don't sleep on the last attempt
             if attempt < API_RETRY_ATTEMPTS - 1:
                 await asyncio.sleep(API_RETRY_DELAY)
-        
+
         _LOGGER.error(
             "Failed to call OneMeter API after %s attempts: %s",
             API_RETRY_ATTEMPTS,
@@ -176,19 +176,21 @@ class OneMeterApiClient:
             "count": count,
         }
 
-        return await self.api_call(f"devices/{self.device_id}/readings", params)    def extract_device_value(self, data: dict[str, Any], obis_code: str) -> Any:
+        return await self.api_call(f"devices/{self.device_id}/readings", params)
+
+    def extract_device_value(self, data: dict[str, Any], obis_code: str) -> Any:
         """Extract a value from device data by OBIS code.
-        
+
         Args:
             data: Device data from the API
             obis_code: OBIS code to extract
-            
+
         Returns:
             The extracted value or None if not found
         """
         if not data or not isinstance(data, dict) or not obis_code:
             return None
-            
+
         try:
             # Try to find the value in different possible data structures
             if RESP_DEVICES in data and isinstance(data[RESP_DEVICES], list) and data[RESP_DEVICES]:
@@ -199,10 +201,10 @@ class OneMeterApiClient:
                         obis_data = last_reading[RESP_OBIS]
                         if isinstance(obis_data, dict) and obis_code in obis_data:
                             return obis_data[obis_code]
-            
+
             # Alternative structure
-            elif (RESP_LAST_READING in data and 
-                  isinstance(data[RESP_LAST_READING], dict) and 
+            elif (RESP_LAST_READING in data and
+                  isinstance(data[RESP_LAST_READING], dict) and
                   RESP_OBIS in data[RESP_LAST_READING]):
                 obis_data = data[RESP_LAST_READING][RESP_OBIS]
                 if isinstance(obis_data, dict) and obis_code in obis_data:
@@ -214,17 +216,17 @@ class OneMeterApiClient:
 
     def extract_reading_value(self, data: dict[str, Any], obis_code: str) -> Any:
         """Extract a value from readings data by OBIS code.
-        
+
         Args:
             data: Readings data from the API
             obis_code: OBIS code to extract
-            
+
         Returns:
             The extracted value or None if not found
         """
         if not data or not isinstance(data, dict) or not obis_code:
             return None
-            
+
         try:
             if "readings" in data and isinstance(data["readings"], list) and data["readings"]:
                 reading = data["readings"][0]  # Get most recent reading
@@ -238,42 +240,44 @@ class OneMeterApiClient:
         except (KeyError, IndexError, TypeError) as err:
             _LOGGER.debug("Error extracting reading value for %s: %s", obis_code, err)
 
-        return None    def get_this_month_usage(self, data: dict[str, Any]) -> float | None:
+        return None
+
+    def get_this_month_usage(self, data: dict[str, Any]) -> float | None:
         """Get this month's usage from device data.
-        
+
         Args:
             data: Device data from the API
-            
+
         Returns:
             This month's usage as a float, or None if not available
         """
         if not data or not isinstance(data, dict):
             return None
-            
+
         try:
             # Try different possible data structures
-            if (RESP_DEVICES in data and 
-                isinstance(data[RESP_DEVICES], list) and 
+            if (RESP_DEVICES in data and
+                isinstance(data[RESP_DEVICES], list) and
                 data[RESP_DEVICES]):
-                
+
                 device = data[RESP_DEVICES][0]
-                if (isinstance(device, dict) and 
-                    RESP_USAGE in device and 
+                if (isinstance(device, dict) and
+                    RESP_USAGE in device and
                     isinstance(device[RESP_USAGE], dict) and
                     RESP_THIS_MONTH in device[RESP_USAGE]):
-                    
+
                     value = device[RESP_USAGE][RESP_THIS_MONTH]
                     if value is not None:
                         return float(value)
-                        
-            elif (RESP_USAGE in data and 
-                  isinstance(data[RESP_USAGE], dict) and 
+
+            elif (RESP_USAGE in data and
+                  isinstance(data[RESP_USAGE], dict) and
                   RESP_THIS_MONTH in data[RESP_USAGE]):
-                  
+
                 value = data[RESP_USAGE][RESP_THIS_MONTH]
                 if value is not None:
                     return float(value)
-                    
+
         except (KeyError, IndexError, ValueError, TypeError) as err:
             _LOGGER.debug("Error extracting this month's usage: %s", err)
 
@@ -281,40 +285,40 @@ class OneMeterApiClient:
 
     def get_previous_month_usage(self, data: dict[str, Any]) -> float | None:
         """Get previous month's usage from device data.
-        
+
         Args:
             data: Device data from the API
-            
+
         Returns:
             Previous month's usage as a float, or None if not available
         """
         if not data or not isinstance(data, dict):
             return None
-            
+
         try:
             # Try different possible data structures
-            if (RESP_DEVICES in data and 
-                isinstance(data[RESP_DEVICES], list) and 
+            if (RESP_DEVICES in data and
+                isinstance(data[RESP_DEVICES], list) and
                 data[RESP_DEVICES]):
-                
+
                 device = data[RESP_DEVICES][0]
-                if (isinstance(device, dict) and 
-                    RESP_USAGE in device and 
+                if (isinstance(device, dict) and
+                    RESP_USAGE in device and
                     isinstance(device[RESP_USAGE], dict) and
                     RESP_PREV_MONTH in device[RESP_USAGE]):
-                    
+
                     value = device[RESP_USAGE][RESP_PREV_MONTH]
                     if value is not None:
                         return float(value)
-                        
-            elif (RESP_USAGE in data and 
-                  isinstance(data[RESP_USAGE], dict) and 
+
+            elif (RESP_USAGE in data and
+                  isinstance(data[RESP_USAGE], dict) and
                   RESP_PREV_MONTH in data[RESP_USAGE]):
-                  
+
                 value = data[RESP_USAGE][RESP_PREV_MONTH]
                 if value is not None:
                     return float(value)
-                    
+
         except (KeyError, IndexError, ValueError, TypeError) as err:
             _LOGGER.debug("Error extracting previous month's usage: %s", err)
 
