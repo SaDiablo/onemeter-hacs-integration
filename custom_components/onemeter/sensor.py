@@ -116,8 +116,21 @@ SENSOR_TYPES: dict[str, SensorEntityDescription] = {
     ),
     "uart_params": SensorEntityDescription(
         key="uart_params",
-        name="UART Communication Parameters",
+        name="Infrared Communication Parameters",
         icon="mdi:router-wireless",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    "ir_power": SensorEntityDescription(
+        key="ir_power",
+        name="IR Transmission Power",
+        icon="mdi:signal",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    "baud_rate": SensorEntityDescription(
+        key="baud_rate",
+        name="IR Baud Rate",
+        icon="mdi:speedometer",
+        native_unit_of_measurement="bps",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     # Hidden diagnostic sensors

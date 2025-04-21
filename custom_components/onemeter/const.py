@@ -59,7 +59,9 @@ OBIS_ENERGY_ABS = "15_8_0"  # Absolute active energy
 OBIS_POWER = "16_7_0"  # Instantaneous active power
 OBIS_BATTERY_VOLTAGE = "S_1_1_2"  # Device battery status
 OBIS_METER_SERIAL = "C_1_0"  # Meter serial number
-OBIS_UART_PARAMS = "S_1_1_8"  # Meter communication parameters
+OBIS_UART_PARAMS = "S_1_1_8"  # Combined infrared transmission power and baud rate
+OBIS_IR_POWER = "S_1_1_8"  # Infrared transmission power (extracted from S_1_1_8)
+OBIS_BAUD_RATE = "S_1_1_8"  # Baud rate (extracted from S_1_1_8)
 OBIS_METER_ERROR = "F_F_0"  # Meter error status
 OBIS_PHYSICAL_ADDRESS = "0_0_0"  # Device address
 OBIS_SUCCESSFUL_READINGS = "S_1_1_6"  # Successful readouts since restart
@@ -118,6 +120,8 @@ SENSOR_TO_OBIS_MAP: dict[str, str] = {
     "battery_voltage": OBIS_BATTERY_VOLTAGE,
     "meter_serial": OBIS_METER_SERIAL,
     "uart_params": OBIS_UART_PARAMS,
+    "ir_power": OBIS_IR_POWER,
+    "baud_rate": OBIS_BAUD_RATE,
     "meter_error": OBIS_METER_ERROR,
     "physical_address": OBIS_PHYSICAL_ADDRESS,
     "successful_readings": OBIS_SUCCESSFUL_READINGS,
