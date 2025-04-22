@@ -164,7 +164,7 @@ class TestOneMeterApiClient(unittest.TestCase):
 async def test_api_client_get_device_data():
     """Test the get_device_data method."""
     client = OneMeterApiClient(device_id="test123", api_key="api_key_test")
-    
+
     # Mock the api_call method
     client.api_call = AsyncMock(return_value={
         "OBIS": {
@@ -172,15 +172,15 @@ async def test_api_client_get_device_data():
             "S_1_1_2": {"value": 3.6}
         }
     })
-    
+
     # Call the method
     result = await client.get_device_data()
-    
+
     # Verify the result
     assert result is not None
     assert "OBIS" in result
     assert result["OBIS"]["1_8_0"]["value"] == 1234.56
-    
+
     # Verify the api_call was called with correct parameters
     client.api_call.assert_called_once_with(f"devices/{client.device_id}")
 
@@ -188,7 +188,7 @@ async def test_api_client_get_device_data():
 async def test_api_client_get_readings():
     """Test the get_readings method."""
     client = OneMeterApiClient(device_id="test123", api_key="api_key_test")
-    
+
     # Mock the api_call method
     client.api_call = AsyncMock(return_value={
         "readings": [
@@ -201,19 +201,19 @@ async def test_api_client_get_readings():
             }
         ]
     })
-    
+
     # Call the method with parameters
     result = await client.get_readings(count=1, obis_codes=["1_8_0", "16_7_0"])
-    
+
     # Verify the result
     assert result is not None
     assert "readings" in result
     assert len(result["readings"]) == 1
     assert result["readings"][0]["OBIS"]["1_8_0"]["value"] == 1234.56
-    
+
     # Verify the api_call was called with correct parameters
     client.api_call.assert_called_once_with(
-        f"devices/{client.device_id}/readings", 
+        f"devices/{client.device_id}/readings",
         {"count": 1, "codes": "1_8_0,16_7_0"}
     )
 
@@ -221,7 +221,7 @@ async def test_api_client_get_readings():
 async def test_extract_device_value():
     """Test the extract_device_value method."""
     client = OneMeterApiClient(device_id="test123", api_key="api_key_test")
-    
+
     # Test valid data
     data = {
         "OBIS": {
@@ -230,19 +230,19 @@ async def test_extract_device_value():
             "null_value": {"value": None}
         }
     }
-    
+
     # Test successful extraction
     assert client.extract_device_value(data, "1_8_0") == 1234.56
-    
+
     # Test missing OBIS code
     assert client.extract_device_value(data, "not_exists") is None
-    
+
     # Test empty value
     assert client.extract_device_value(data, "empty_value") is None
-    
+
     # Test null value
     assert client.extract_device_value(data, "null_value") is None
-    
+
     # Test invalid data
     assert client.extract_device_value(None, "1_8_0") is None
     assert client.extract_device_value({}, "1_8_0") is None

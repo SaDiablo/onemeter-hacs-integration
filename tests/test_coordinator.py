@@ -225,10 +225,10 @@ async def test_coordinator_update(hass: HomeAssistant, mock_onemeter_client):
         name="Test Device",
         device_id="device123456",
     )
-    
+
     # Test initial refresh
     await coordinator.async_refresh()
-    
+
     # Validate data
     assert coordinator.data is not None
     assert "energy_plus" in coordinator.data
@@ -237,7 +237,7 @@ async def test_coordinator_update(hass: HomeAssistant, mock_onemeter_client):
     assert coordinator.data["battery_voltage"] == 3.6
     assert "this_month" in coordinator.data
     assert coordinator.data["this_month"] == 350.75
-    
+
     # Test next update calculation
     assert coordinator.update_interval is not None
 
@@ -253,12 +253,12 @@ async def test_coordinator_error_handling(hass: HomeAssistant, mock_onemeter_cli
         name="Test Device",
         device_id="device123456",
     )
-    
+
     # Make client.get_device_data raise an exception
     mock_onemeter_client.get_device_data.side_effect = Exception("API error")
-    
+
     # Refresh should handle the exception
     await coordinator.async_refresh()
-    
+
     # Check that the coordinator properly handled the exception
     assert coordinator.last_update_success is False

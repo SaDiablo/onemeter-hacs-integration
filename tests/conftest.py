@@ -26,7 +26,7 @@ def mock_onemeter_client():
     client = MagicMock(spec=OneMeterApiClient)
     client.device_id = MOCK_DEVICE_ID
     client.api_key = MOCK_API_KEY
-    
+
     # Mock async methods
     client.get_device_data = AsyncMock(
         return_value={
@@ -40,7 +40,7 @@ def mock_onemeter_client():
             }
         }
     )
-    
+
     client.get_readings = AsyncMock(
         return_value={
             "readings": [
@@ -54,12 +54,12 @@ def mock_onemeter_client():
             ]
         }
     )
-    
+
     client.get_this_month_usage = MagicMock(return_value=350.75)
     client.get_previous_month_usage = MagicMock(return_value=425.25)
     client.extract_device_value = MagicMock(return_value=None)
     client.extract_reading_value = MagicMock(return_value=None)
-    
+
     # Set up specific mock values for key attributes
     def extract_device_value_side_effect(data, obis_code):
         if obis_code == "1_8_0":
@@ -69,17 +69,17 @@ def mock_onemeter_client():
         elif obis_code == "S_1_1_2":
             return 3.6
         return None
-    
+
     def extract_reading_value_side_effect(data, obis_code):
         if obis_code == "16_7_0":
             return 2.5
         return None
-    
+
     client.extract_device_value.side_effect = extract_device_value_side_effect
     client.extract_reading_value.side_effect = extract_reading_value_side_effect
-    
+
     client.close = AsyncMock()
-    
+
     return client
 
 
@@ -102,7 +102,7 @@ def mock_get_available_devices():
         "custom_components.onemeter.config_flow.get_available_devices",
         return_value=[
             {
-                "_id": MOCK_DEVICE_ID, 
+                "_id": MOCK_DEVICE_ID,
                 "info": {"name": "My OneMeter Device"}
             }
         ],
