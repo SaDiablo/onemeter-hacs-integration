@@ -5,17 +5,15 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from homeassistant import config_entries
+from homeassistant.const import CONF_API_KEY, CONF_DEVICE_ID, CONF_NAME
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 
 from custom_components.onemeter.config_flow import OneMeterConfigFlow
 from custom_components.onemeter.const import (
-    CONF_API_KEY,
-    CONF_DEVICE_ID,
-    CONF_NAME,
-    DOMAIN,
     CONF_REFRESH_INTERVAL,
     DEFAULT_REFRESH_INTERVAL,
+    DOMAIN,
 )
 
 
