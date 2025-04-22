@@ -13,31 +13,31 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: '3.13'
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest pytest-cov pylint black isort
+        pip install pytest pytest-cov pylint ruff mypy
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         if [ -f requirements_test.txt ]; then pip install -r requirements_test.txt; fi
     
     - name: Lint with pylint
       run: |
-        pylint $(git ls-files '*.py')
+        pylint custom_components/
     
-    - name: Check formatting with black
+    - name: Check code with ruff
       run: |
-        black --check $(git ls-files '*.py')
+        ruff check custom_components/
     
-    - name: Check import ordering with isort
+    - name: Type checking with mypy
       run: |
-        isort --check $(git ls-files '*.py')
+        mypy custom_components/
   
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.9, '3.10']
+        python-version: [3.9, '3.13']
 
     name: Test with Python ${{ matrix.python-version }}
     steps:
