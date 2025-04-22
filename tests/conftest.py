@@ -14,7 +14,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 # Now we can import the components after path setup
 from custom_components.onemeter.api import OneMeterApiClient
-from custom_components.onemeter.const import DOMAIN
 
 # Mock API responses
 MOCK_DEVICE_ID = "device123456"
