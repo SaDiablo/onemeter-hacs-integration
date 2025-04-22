@@ -15,7 +15,7 @@ from custom_components.onemeter.coordinator import (
     OneMeterUpdateCoordinator,
     _validate_api_data
 )
-from custom_components.onemeter.const import SENSOR_TO_OBIS_MAP, UPDATE_OFFSET_SECONDS
+from custom_components.onemeter.const import SENSOR_TO_OBIS_MAP, UPDATE_OFFSET_SECONDS, DEFAULT_REFRESH_INTERVAL
 
 
 @pytest.mark.asyncio
@@ -212,3 +212,53 @@ async def test_async_update_data_both_fail(hass: HomeAssistant):
     # Perform the update - expect it to fail
     with pytest.raises(UpdateFailed):
         await coordinator._async_update_data()
+
+
+@pytest.mark.asyncio
+async def test_coordinator_update(hass: HomeAssistant, mock_onemeter_client):
+    """Test coordinator update."""
+    # Create coordinator
+    coordinator = OneMeterUpdateCoordinator(
+        hass=hass,
+        client=mock_onemeter_client,
+        refresh_interval=DEFAULT_REFRESH_INTERVAL,
+        name="Test Device",
+        device_id="device123456",
+    )
+    
+    # Test initial refresh
+    await coordinator.async_refresh()
+    
+    # Validate data
+    assert coordinator.data is not None
+    assert "energy_plus" in coordinator.data
+    assert coordinator.data["energy_plus"] == 1234.56
+    assert "battery_voltage" in coordinator.data
+    assert coordinator.data["battery_voltage"] == 3.6
+    assert "this_month" in coordinator.data
+    assert coordinator.data["this_month"] == 350.75
+    
+    # Test next update calculation
+    assert coordinator.update_interval is not None
+
+
+@pytest.mark.asyncio
+async def test_coordinator_error_handling(hass: HomeAssistant, mock_onemeter_client):
+    """Test coordinator error handling."""
+    # Create coordinator
+    coordinator = OneMeterUpdateCoordinator(
+        hass=hass,
+        client=mock_onemeter_client,
+        refresh_interval=DEFAULT_REFRESH_INTERVAL,
+        name="Test Device",
+        device_id="device123456",
+    )
+    
+    # Make client.get_device_data raise an exception
+    mock_onemeter_client.get_device_data.side_effect = Exception("API error")
+    
+    # Refresh should handle the exception
+    await coordinator.async_refresh()
+    
+    # Check that the coordinator properly handled the exception
+    assert coordinator.last_update_success is False
