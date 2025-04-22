@@ -20,7 +20,6 @@ disable=
 
 [REPORTS]
 output-format=text
-files-output=no
 reports=no
 evaluation=10.0 - ((float(5 * error + warning + refactor + convention) / statement) * 10)
 msg-template={path}:{line}:{column}: {msg_id}: {msg} ({symbol})
@@ -29,7 +28,6 @@ msg-template={path}:{line}:{column}: {msg_id}: {msg} ({symbol})
 max-line-length=100
 ignore-long-lines=^\s*(# )?<?https?://\S+>?$
 single-line-if-stmt=no
-no-space-check=trailing-comma,dict-separator
 max-module-lines=2000
 indent-string='    '
 indent-after-paren=4
