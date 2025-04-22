@@ -30,13 +30,13 @@ class OneMeterEntity(CoordinatorEntity[dict[str, Any]]):
     def device_info(self) -> DeviceInfo:
         """Return device information."""
         data = self.coordinator.data if self.coordinator.data else {}
-        
+
         # Extract device information from coordinator data
         firmware_version = data.get("firmware_version") or "Unknown"
         hardware_version = data.get("hardware_version") or "Unknown"
         serial_number = data.get("meter_serial") or self._device_id
         mac_address = data.get("mac_address") or data.get("physical_address")
-        
+
         return DeviceInfo(
             identifiers={(DOMAIN, self._device_id)},
             name="OneMeter Energy Monitor",

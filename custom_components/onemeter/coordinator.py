@@ -18,27 +18,27 @@ _LOGGER = logging.getLogger(__name__)
 
 def _validate_api_data(device_data: Any, readings_data: Any) -> None:
     """Validate API data and raise UpdateFailed if invalid.
-    
+
     Args:
         device_data: Device data from the API
         readings_data: Readings data from the API
-        
+
     Raises:
         UpdateFailed: If both device_data and readings_data are invalid
     """
     if not device_data and not readings_data:
         raise UpdateFailed("Failed to fetch data from OneMeter API")
-        
+
     if not device_data:
         _LOGGER.warning("Device data is missing or empty, using only readings data")
     elif not readings_data:
         _LOGGER.warning("Readings data is missing or empty, using only device data")
-        
+
     # Check for specific data structure integrity
     if device_data and not isinstance(device_data, dict):
         _LOGGER.error("Device data has invalid format: %s", type(device_data))
         raise UpdateFailed("Device data has invalid format")
-        
+
     if readings_data and not isinstance(readings_data, dict):
         _LOGGER.error("Readings data has invalid format: %s", type(readings_data))
         raise UpdateFailed("Readings data has invalid format")
@@ -103,7 +103,7 @@ class OneMeterUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         try:
             # Get device data - essential for most readings
             device_data = await self.client.get_device_data()
-            
+
             # Simplified validation
             if not device_data or not isinstance(device_data, dict):
                 raise UpdateFailed("Invalid or missing device data from OneMeter API")
@@ -152,7 +152,7 @@ class OneMeterUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         data["baud_rate"] = int(uart_list[1]) if isinstance(uart_list[1], (int, float, str)) else None
                 except (IndexError, ValueError, TypeError) as err:
                     _LOGGER.debug("Could not parse UART parameters list: %s - %s", data["uart_params"], err)
-            
+
             # Add battery percentage calculated from battery voltage
             try:
                 if "battery_voltage" in data and isinstance(
@@ -172,7 +172,7 @@ class OneMeterUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     "this_month": self.client.get_this_month_usage(device_data),
                     "previous_month": self.client.get_previous_month_usage(device_data),
                 }
-                
+
                 # Only add non-None values to the data dictionary
                 data.update({k: v for k, v in monthly_data.items() if v is not None})
             except Exception as err:
@@ -183,8 +183,8 @@ class OneMeterUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.update_interval = next_update
 
             _LOGGER.debug(
-                "Update completed with %d values, next update in %s", 
-                len(data), 
+                "Update completed with %d values, next update in %s",
+                len(data),
                 next_update
             )
 

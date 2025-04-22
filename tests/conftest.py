@@ -20,7 +20,7 @@ def mock_api_client() -> AsyncMock:
     client = AsyncMock(spec=OneMeterApiClient)
     client.device_id = "test-device-id"
     client.api_key = "test-api-key"
-    
+
     # Setup API responses
     client.get_device_data = AsyncMock(return_value={
         "lastReading": {
@@ -41,7 +41,7 @@ def mock_api_client() -> AsyncMock:
             "previousMonth": 234.56,
         }
     })
-    
+
     client.get_readings = AsyncMock(return_value={
         "readings": [{
             "OBIS": {
@@ -51,7 +51,7 @@ def mock_api_client() -> AsyncMock:
             "date": "2025-04-13T12:00:00.000Z"
         }]
     })
-    
+
     client.close = AsyncMock()
     return client
 
@@ -85,7 +85,7 @@ async def mock_coordinator(hass, mock_api_client) -> OneMeterUpdateCoordinator:
         name="Test OneMeter",
         device_id="test-device-id"
     )
-    
+
     coordinator.data = {
         "energy_plus": 12345.67,
         "energy_minus": 0.0,
@@ -100,5 +100,5 @@ async def mock_coordinator(hass, mock_api_client) -> OneMeterUpdateCoordinator:
         "this_month": 123.45,
         "previous_month": 234.56,
     }
-    
+
     return coordinator
