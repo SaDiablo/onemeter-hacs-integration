@@ -42,7 +42,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest pytest-cov pylint ruff mypy
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        if [ -f requirements_test.txt ]; then pip install -r requirements_test.txt; fi
+        if [ -f requirements.tests.txt ]; then pip install -r requirements.tests.txt; fi
 
     - name: Lint with pylint
       continue-on-error: true
@@ -81,7 +81,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest pytest-cov pytest-homeassistant-custom-component
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f requirements_test.txt ]; then pip install -r requirements_test.txt; fi
+          if [ -f requirements.tests.txt ]; then pip install -r requirements.tests.txt; fi
 
       - name: Test with pytest
         continue-on-error: true
