@@ -8,7 +8,6 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     name: Validate
-    continue-on-error: true # Continue the workflow even if this job fails
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python
@@ -23,17 +22,17 @@ jobs:
         if [ -f requirements_test.txt ]; then pip install -r requirements_test.txt; fi
     
     - name: Lint with pylint
-      continue-on-error: true # Continue to next step even if this fails
+      continue-on-error: true
       run: |
         pylint custom_components/
     
     - name: Check code with ruff
-      continue-on-error: true # Continue to next step even if this fails
+      continue-on-error: true
       run: |
         ruff check custom_components/
     
     - name: Type checking with mypy
-      continue-on-error: true # Continue to next step even if this fails
+      continue-on-error: true
       run: |
         mypy custom_components/
   
@@ -60,7 +59,7 @@ jobs:
         if [ -f requirements_test.txt ]; then pip install -r requirements_test.txt; fi
     
     - name: Test with pytest
-      continue-on-error: true # Continue to next step even if tests fail
+      continue-on-error: true
       run: |
         pytest --cov=custom_components/onemeter --cov-report=xml
     
