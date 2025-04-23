@@ -7,7 +7,7 @@ There are two ways to install the OneMeter Cloud integration in your Home Assist
 The Home Assistant Community Store (HACS) provides a convenient way to install and update custom components.
 
 1. Make sure you have [HACS](https://hacs.xyz/) installed in your Home Assistant instance
-   - If you don't have HACS installed yet, follow the [official installation guide](https://hacs.xyz/docs/installation/prerequisites)
+   - If you don't have HACS installed yet, follow the [official installation guide](https://hacs.xyz/docs/use/download/prerequisites/)
 
 2. Navigate to HACS in your Home Assistant sidebar
 
