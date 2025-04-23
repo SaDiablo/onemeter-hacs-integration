@@ -7,7 +7,7 @@ import logging
 from typing import Any, Final, TypedDict, NotRequired, cast
 
 import aiohttp
-from aiohttp import ClientSession, ClientConnectionError, ClientResponseError
+from aiohttp import ClientSession
 
 from .const import (
     API_BASE_URL,

@@ -1,4 +1,4 @@
--r requirements.tests.txt
+#-r requirements.tests.txt
 
 # For linting & code writing
 pylint
@@ -22,3 +22,5 @@ flake8-typing-imports
 black
 
 bandit
+
+homeassistant==2025.3.1

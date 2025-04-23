@@ -1,104 +1,110 @@
-"""Fixtures for OneMeter tests."""
+"""Pytest configuration for the OneMeter integration tests."""
+
 from __future__ import annotations
 
-import asyncio
+import os
+import sys
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
+# Add the custom_components directory to the Python path
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+
+# Now we can import the components after path setup
 from custom_components.onemeter.api import OneMeterApiClient
-from custom_components.onemeter.const import CONF_API_KEY, CONF_DEVICE_ID, DOMAIN
-from custom_components.onemeter.coordinator import OneMeterUpdateCoordinator
+
+# Mock API responses
+MOCK_DEVICE_ID = "device123456"
+MOCK_API_KEY = "api_key_12345"
 
 
 @pytest.fixture
-def mock_api_client() -> AsyncMock:
-    """Return a mock OneMeter API client."""
-    client = AsyncMock(spec=OneMeterApiClient)
-    client.device_id = "test-device-id"
-    client.api_key = "test-api-key"
-    
-    # Setup API responses
-    client.get_device_data = AsyncMock(return_value={
-        "lastReading": {
+def mock_onemeter_client():
+    """Mock the OneMeter API client."""
+    client = MagicMock(spec=OneMeterApiClient)
+    client.device_id = MOCK_DEVICE_ID
+    client.api_key = MOCK_API_KEY
+
+    # Mock async methods
+    client.get_device_data = AsyncMock(
+        return_value={
             "OBIS": {
-                "1_8_0": 12345.67,  # Energy Plus
-                "2_8_0": 0.0,       # Energy Minus
-                "5_8_0": 2305.99,   # Energy R1
-                "8_8_0": 3061.36,   # Energy R4
-                "15_8_0": 12345.67, # Energy |A|
-                "16_7_0": 2.5,      # Power
-                "S_1_1_2": 3.6,     # Battery voltage
-                "C_1_0": "11722779",# Meter Serial
-                "0_2_2": "G11"      # Tariff
-            }
-        },
-        "usage": {
-            "thisMonth": 123.45,
-            "previousMonth": 234.56,
-        }
-    })
-    
-    client.get_readings = AsyncMock(return_value={
-        "readings": [{
-            "OBIS": {
-                "1_8_0": 12345.67,
-                "16_7_0": 2.5,
+                "1_8_0": {"value": 1234.56},  # Energy plus
+                "2_8_0": {"value": 0.0},      # Energy minus
+                "S_1_1_2": {"value": 3.6},    # Battery voltage
             },
-            "date": "2025-04-13T12:00:00.000Z"
-        }]
-    })
-    
+            "lastReading": {
+                "timestamp": 1675000000
+            }
+        }
+    )
+
+    client.get_readings = AsyncMock(
+        return_value={
+            "readings": [
+                {
+                    "timestamp": 1675000000,
+                    "OBIS": {
+                        "1_8_0": {"value": 1234.56},
+                        "16_7_0": {"value": 2.5}  # Power
+                    }
+                }
+            ]
+        }
+    )
+
+    client.get_this_month_usage = MagicMock(return_value=350.75)
+    client.get_previous_month_usage = MagicMock(return_value=425.25)
+    client.extract_device_value = MagicMock(return_value=None)
+    client.extract_reading_value = MagicMock(return_value=None)
+
+    # Set up specific mock values for key attributes
+    def extract_device_value_side_effect(data, obis_code):
+        if obis_code == "1_8_0":
+            return 1234.56
+        elif obis_code == "2_8_0":
+            return 0.0
+        elif obis_code == "S_1_1_2":
+            return 3.6
+        return None
+
+    def extract_reading_value_side_effect(data, obis_code):
+        if obis_code == "16_7_0":
+            return 2.5
+        return None
+
+    client.extract_device_value.side_effect = extract_device_value_side_effect
+    client.extract_reading_value.side_effect = extract_reading_value_side_effect
+
     client.close = AsyncMock()
+
     return client
 
 
 @pytest.fixture
-def mock_config_entry() -> MagicMock:
-    """Return a mock config entry."""
-    entry = MagicMock(spec=ConfigEntry)
-    entry.entry_id = "test_entry_id"
-    entry.data = {
-        CONF_API_KEY: "test-api-key",
-        CONF_DEVICE_ID: "test-device-id",
-        "name": "Test OneMeter"
-    }
-    entry.options = {
-        "refresh_interval": 15
-    }
-    entry.title = "Test OneMeter"
-    entry.domain = DOMAIN
-    entry.unique_id = "test-device-id"
-    return entry
+def hass_storage():
+    """Fixture to mock the hass storage."""
+    return {}
 
 
 @pytest.fixture
-async def mock_coordinator(hass, mock_api_client) -> OneMeterUpdateCoordinator:
-    """Return a mock coordinator."""
-    coordinator = OneMeterUpdateCoordinator(
-        hass=hass,
-        client=mock_api_client,
-        refresh_interval=15,
-        name="Test OneMeter",
-        device_id="test-device-id"
-    )
-    
-    coordinator.data = {
-        "energy_plus": 12345.67,
-        "energy_minus": 0.0,
-        "energy_r1": 2305.99,
-        "energy_r4": 3061.36,
-        "energy_abs": 12345.67,
-        "power": 2.5,
-        "battery_voltage": 3.6,
-        "battery_percentage": 95,
-        "meter_serial": "11722779",
-        "tariff": "G11",
-        "this_month": 123.45,
-        "previous_month": 234.56,
-    }
-    
-    return coordinator
+def hass_config_entries():
+    """Fixture to mock the config entries data."""
+    return {}
+
+
+@pytest.fixture
+def mock_get_available_devices():
+    """Mock the get_available_devices function."""
+    with patch(
+        "custom_components.onemeter.config_flow.get_available_devices",
+        return_value=[
+            {
+                "_id": MOCK_DEVICE_ID,
+                "info": {"name": "My OneMeter Device"}
+            }
+        ],
+    ) as mock:
+        yield mock

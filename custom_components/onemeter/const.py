@@ -161,7 +161,6 @@ SENSOR_TO_OBIS_MAP: dict[str, str] = {
     "mac_address": OBIS_MAC_ADDRESS,
     "device_status": OBIS_DEVICE_STATUS,
     "energy_consumption_blink": OBIS_ENERGY_CONSUMPTION_BLINK,
-    "device_status": OBIS_DEVICE_STATUS,
 }
 
 # API Configuration
