@@ -19,7 +19,6 @@ from homeassistant.const import (
     UnitOfElectricPotential,
     UnitOfEnergy,
     UnitOfPower,
-    UnitOfReactiveEnergy,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
@@ -27,7 +26,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
 from .api import OneMeterApiClient
-from .const import CONF_REFRESH_INTERVAL, DEFAULT_REFRESH_INTERVAL
+from .const import CONF_REFRESH_INTERVAL, DEFAULT_REFRESH_INTERVAL, UNIT_REACTIVE_ENERGY
 from .coordinator import OneMeterUpdateCoordinator
 from .entity import OneMeterEntity
 
@@ -60,7 +59,7 @@ SENSOR_TYPES: dict[str, SensorEntityDescription] = {
     "energy_r1": SensorEntityDescription(
         key="energy_r1",
         name="Energy R1 (total)",
-        native_unit_of_measurement=UnitOfReactiveEnergy.KILOVOLT_AMPERE_REACTIVE_HOUR,
+        native_unit_of_measurement=UNIT_REACTIVE_ENERGY,
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         icon="mdi:flash",
@@ -68,7 +67,7 @@ SENSOR_TYPES: dict[str, SensorEntityDescription] = {
     "energy_r4": SensorEntityDescription(
         key="energy_r4",
         name="Energy R4 (total)",
-        native_unit_of_measurement=UnitOfReactiveEnergy.KILOVOLT_AMPERE_REACTIVE_HOUR,
+        native_unit_of_measurement=UNIT_REACTIVE_ENERGY,
         device_class=SensorDeviceClass.ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         icon="mdi:flash",
@@ -116,8 +115,21 @@ SENSOR_TYPES: dict[str, SensorEntityDescription] = {
     ),
     "uart_params": SensorEntityDescription(
         key="uart_params",
-        name="UART Communication Parameters",
+        name="Infrared Communication Parameters",
         icon="mdi:router-wireless",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    "ir_power": SensorEntityDescription(
+        key="ir_power",
+        name="IR Transmission Power",
+        icon="mdi:signal",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    "baud_rate": SensorEntityDescription(
+        key="baud_rate",
+        name="IR Baud Rate",
+        icon="mdi:speedometer",
+        native_unit_of_measurement="bps",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     # Hidden diagnostic sensors
@@ -227,56 +239,56 @@ SENSOR_TYPES: dict[str, SensorEntityDescription] = {
     "energy_r1_t1": SensorEntityDescription(
         key="energy_r1_t1",
         name="Reactive energy R1 (tariff I)",
-        native_unit_of_measurement=UnitOfReactiveEnergy.KILOVOLT_AMPERE_REACTIVE_HOUR,
+        native_unit_of_measurement=UNIT_REACTIVE_ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         icon="mdi:flash",
     ),
     "energy_r1_t2": SensorEntityDescription(
         key="energy_r1_t2",
         name="Reactive energy R1 (tariff II)",
-        native_unit_of_measurement=UnitOfReactiveEnergy.KILOVOLT_AMPERE_REACTIVE_HOUR,
+        native_unit_of_measurement=UNIT_REACTIVE_ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         icon="mdi:flash",
     ),
     "energy_r1_t3": SensorEntityDescription(
         key="energy_r1_t3",
         name="Reactive energy R1 (tariff III)",
-        native_unit_of_measurement=UnitOfReactiveEnergy.KILOVOLT_AMPERE_REACTIVE_HOUR,
+        native_unit_of_measurement=UNIT_REACTIVE_ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         icon="mdi:flash",
     ),
     "energy_r1_t4": SensorEntityDescription(
         key="energy_r1_t4",
         name="Reactive energy R1 (tariff IV)",
-        native_unit_of_measurement=UnitOfReactiveEnergy.KILOVOLT_AMPERE_REACTIVE_HOUR,
+        native_unit_of_measurement=UNIT_REACTIVE_ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         icon="mdi:flash",
     ),
     "energy_r4_t1": SensorEntityDescription(
         key="energy_r4_t1",
         name="Reactive energy R4 (tariff I)",
-        native_unit_of_measurement=UnitOfReactiveEnergy.KILOVOLT_AMPERE_REACTIVE_HOUR,
+        native_unit_of_measurement=UNIT_REACTIVE_ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         icon="mdi:flash",
     ),
     "energy_r4_t2": SensorEntityDescription(
         key="energy_r4_t2",
         name="Reactive energy R4 (tariff II)",
-        native_unit_of_measurement=UnitOfReactiveEnergy.KILOVOLT_AMPERE_REACTIVE_HOUR,
+        native_unit_of_measurement=UNIT_REACTIVE_ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         icon="mdi:flash",
     ),
     "energy_r4_t3": SensorEntityDescription(
         key="energy_r4_t3",
         name="Reactive energy R4 (tariff III)",
-        native_unit_of_measurement=UnitOfReactiveEnergy.KILOVOLT_AMPERE_REACTIVE_HOUR,
+        native_unit_of_measurement=UNIT_REACTIVE_ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         icon="mdi:flash",
     ),
     "energy_r4_t4": SensorEntityDescription(
         key="energy_r4_t4",
         name="Reactive energy R4 (tariff IV)",
-        native_unit_of_measurement=UnitOfReactiveEnergy.KILOVOLT_AMPERE_REACTIVE_HOUR,
+        native_unit_of_measurement=UNIT_REACTIVE_ENERGY,
         state_class=SensorStateClass.TOTAL_INCREASING,
         icon="mdi:flash",
     ),
@@ -287,8 +299,9 @@ SENSOR_TYPES: dict[str, SensorEntityDescription] = {
     ),
     "date": SensorEntityDescription(
         key="date",
-        name="Date",
+        name="Last Total Readout",
         icon="mdi:calendar",
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     "active_demand": SensorEntityDescription(
         key="active_demand",
@@ -323,8 +336,7 @@ SENSOR_TYPES: dict[str, SensorEntityDescription] = {
     "readout_timestamp": SensorEntityDescription(
         key="readout_timestamp",
         name="Readout Timestamp",
-        icon="mdi:clock",
-        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:clock-outline",
     ),
     "readout_timestamp_corrected": SensorEntityDescription(
         key="readout_timestamp_corrected",
